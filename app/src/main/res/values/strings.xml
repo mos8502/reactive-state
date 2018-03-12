@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">CoState</string>
+    <string name="title_activity_main">Todo</string>
+    <string name="label_add">Add</string>
+</resources>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:layout_width="match_parent"
+    tools:layout_height="wrap_content"
+    tools:parentTag="android.support.constraint.ConstraintLayout">
+    <ImageView
+        android:id="@+id/addIcon"
+        android:src="@drawable/ic_add"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/key_line"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+    <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="start|center_vertical"
+        android:text="@string/label_add"
+        android:textColor="?attr/colorAccent"
+        android:textSize="@dimen/line_item_text_size"
+        android:ellipsize="end"
+        android:layout_marginTop="@dimen/key_line"
+        android:layout_marginBottom="@dimen/key_line"
+        android:layout_marginEnd="@dimen/key_line"
+        app:layout_constraintStart_toEndOf="@+id/addIcon"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+</merge>

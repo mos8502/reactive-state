@@ -1,0 +1,5 @@
+<resources>
+    <dimen name="key_line">16dp</dimen>
+    <dimen name="key_line_large">24dp</dimen>
+    <dimen name="line_item_text_size">16sp</dimen>
+</resources>
