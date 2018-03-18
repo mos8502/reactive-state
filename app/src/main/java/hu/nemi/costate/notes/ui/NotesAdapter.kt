@@ -5,6 +5,7 @@ import android.support.v7.widget.RecyclerView
 import android.view.View
 import android.view.ViewGroup
 import hu.nemi.costate.notes.Notes
+import hu.nemi.costate.util.SimpleDiffCallkback
 import kotlin.properties.Delegates
 
 class NotesAdapter : RecyclerView.Adapter<NotesViewHolder>() {

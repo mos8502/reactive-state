@@ -2,19 +2,14 @@ package hu.nemi.costate.util
 
 import android.support.v7.util.DiffUtil
 
-fun <Model, Id> simpleDiffCallback(oldItems: List<Model>, newItems: List<Model>, id: Model.() -> Id): DiffUtil.Callback =
-        SimpleDiffCallback(oldItems, newItems, id)
+class SimpleDiffCallkback<Model, Id>(private val oldItems: List<Model>, private val newItems: List<Model>, val id: (Model) -> Id) : DiffUtil.Callback() {
+    override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+            id(oldItems[oldItemPosition]) == id(newItems[newItemPosition])
 
-private class SimpleDiffCallback<Model, out Id>(val oldItem: List<Model>,
-                                            val newItems: List<Model>,
-                                            val id: Model.() -> Id) : DiffUtil.Callback() {
-    override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) =
-            oldItem[oldItemPosition].id() == newItems[newItemPosition].id()
+    override fun getOldListSize(): Int = oldItems.size
 
-    override fun getOldListSize() = oldItem.size
+    override fun getNewListSize(): Int = newItems.size
 
-    override fun getNewListSize() = newItems.size
-
-    override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) =
-            oldItem[oldItemPosition] == newItems[newItemPosition]
+    override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+            oldItems[oldItemPosition] == newItems[newItemPosition]
 }
