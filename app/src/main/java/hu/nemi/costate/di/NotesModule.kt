@@ -5,15 +5,15 @@ import android.arch.persistence.room.Room
 import android.content.Context
 import dagger.Module
 import dagger.Provides
-import hu.nemi.costate.ViewModelFactory
-import hu.nemi.costate.model.Notes
-import hu.nemi.costate.model.NotesImpl
-import hu.nemi.costate.model.NotesRepositoryImpl
-import hu.nemi.costate.model.NotesRepository
-import hu.nemi.costate.model.db.NotesDao
-import hu.nemi.costate.model.db.NotesDatabase
-import hu.nemi.costate.model.network.DefaultNotesClient
-import hu.nemi.costate.model.network.NotesClient
+import hu.nemi.costate.notes.db.NotesDao
+import hu.nemi.costate.notes.db.NotesDatabase
+import hu.nemi.costate.notes.impl.EditorService
+import hu.nemi.costate.notes.impl.NotesImpl
+import hu.nemi.costate.notes.impl.NotesPersistence
+import hu.nemi.costate.notes.impl.NotesViewModelImpl
+import hu.nemi.costate.notes.impl.editor.EditorServiceImpl
+import kotlinx.coroutines.experimental.DefaultDispatcher
+import kotlinx.coroutines.experimental.android.UI
 import javax.inject.Singleton
 
 @Module
@@ -26,14 +26,12 @@ class NotesModule {
     fun provideNotesDao(db: NotesDatabase): NotesDao = db.notesDao()
 
     @[Provides Singleton]
-    fun provideNotesRepository(dao: NotesDao, client: NotesClient): NotesRepository = NotesRepositoryImpl(dao, client)
+    fun provideNotesPersistence(dao: NotesDao) = NotesPersistence(dao = dao, context = DefaultDispatcher)
 
     @[Provides Singleton]
-    fun provideViewModelFactory(notes: Notes) : ViewModelProvider.Factory = ViewModelFactory(notes)
+    fun provideEditorService(): EditorService = EditorServiceImpl(messageContext = DefaultDispatcher, stateContext = UI)
 
     @[Provides Singleton]
-    fun provideNotes(repository: NotesRepository): Notes = NotesImpl(repository)
-
-    @get:[Provides Singleton] val notesClient: NotesClient = DefaultNotesClient()
-
+    fun provideNotes(persistence: NotesPersistence, editorService: EditorService): ViewModelProvider.Factory =
+            NotesViewModelImpl.Factory(NotesImpl(messageContext = DefaultDispatcher, stateContext = UI, persistence = persistence, editorService = editorService))
 }
