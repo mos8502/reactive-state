@@ -1,5 +1,7 @@
 package hu.nemi.costate.notes.impl
 
+import hu.nemi.costate.di.Background
+import hu.nemi.costate.di.Main
 import hu.nemi.costate.notes.Editor
 import hu.nemi.costate.notes.Notes
 import hu.nemi.costate.notes.db.NoteEntity
@@ -8,11 +10,16 @@ import hu.nemi.store.coroutines.coroutineDispatcher
 import hu.nemi.store.middlewareChain
 import hu.nemi.store.store
 import java.io.Closeable
+import javax.inject.Inject
 import kotlin.coroutines.experimental.CoroutineContext
 
 interface EditorService : Middleware<NotesImpl.State, NotesImpl.Message>
 
-class NotesImpl(messageContext: CoroutineContext, stateContext: CoroutineContext, persistence: NotesPersistence, editorService: EditorService) : Notes {
+class NotesImpl @Inject constructor(@Background messageContext: CoroutineContext,
+                                    @Main stateContext: CoroutineContext,
+                                    persistence: NotesPersistence,
+                                    editorService: EditorService) : Notes {
+
     private val store = store(initialState = State(false, emptyList(), State.CreateState.Action), reducer = ::reduce)
     private val dispatcher = coroutineDispatcher(store = store,
             middlewareChain = middlewareChain(listOf(persistence, editorService)),

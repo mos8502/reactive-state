@@ -7,7 +7,7 @@ import android.content.Context
 import dagger.BindsInstance
 
 @Singleton
-@Component(modules = [NotesModule::class])
+@Component(modules = [NotesModule::class, ViewModelModule::class, CoroutinesModule::class, DatabaseModule::class])
 interface NotesComponent {
     val viewModelFactory: ViewModelProvider.Factory
 

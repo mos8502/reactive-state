@@ -35,11 +35,7 @@ private class CoroutineStoreDispatcherImpl<State, Message>(private val store: St
     private val job = Job()
     private val _state = ConflatedBroadcastChannel<State>()
     private val actor = actor<Message>(context = messageDispatcher, parent = job) {
-        store.onStateChanged { state ->
-            runBlocking {
-                _state.send(state)
-            }
-        }
+        store.onStateChanged { state -> _state.offer(state) }
         while (isActive) {
             select<Unit> {
                 channel.onReceive { message ->
@@ -59,7 +55,6 @@ private class CoroutineStoreDispatcherImpl<State, Message>(private val store: St
     override fun subscribe(block: (State) -> Unit): Closeable {
         return launch(context = stateDispatcher, parent = job) {
             _state.consumeEach { state ->
-                println(state)
                 block(state)
             }
         }.toCloseable()

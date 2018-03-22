@@ -1,5 +1,7 @@
 package hu.nemi.costate.notes.impl.editor
 
+import hu.nemi.costate.di.Background
+import hu.nemi.costate.di.Main
 import hu.nemi.costate.notes.Editor
 import hu.nemi.costate.notes.db.NoteEntity
 import hu.nemi.costate.notes.impl.EditorService
@@ -11,9 +13,10 @@ import hu.nemi.store.*
 import hu.nemi.store.Middleware.Chain.Next
 import hu.nemi.store.coroutines.coroutineDispatcher
 import java.io.Closeable
+import javax.inject.Inject
 import kotlin.coroutines.experimental.CoroutineContext
 
-class EditorServiceImpl(private val messageContext: CoroutineContext, private val stateContext: CoroutineContext) : EditorService {
+class EditorServiceImpl @Inject constructor(@Background val messageContext: CoroutineContext, @Main val stateContext: CoroutineContext) : EditorService {
     override fun dispatch(dispatcher: Dispatcher<Message>, state: State, message: Message, next: Next<State, Message>) {
         next.dispatch(dispatcher, state, message)
         when (message) {

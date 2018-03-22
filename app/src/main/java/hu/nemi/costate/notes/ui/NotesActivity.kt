@@ -28,12 +28,13 @@ class NotesActivity : AppCompatActivity() {
                 style = Paint.Style.FILL
             }
         }
+
         override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder) = false
 
         override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {
             val item = adapter.notes[viewHolder.adapterPosition]
 
-            return ItemTouchHelper.Callback.makeMovementFlags(0, if(item is Notes.Item.Note) ItemTouchHelper.RIGHT else 0)
+            return ItemTouchHelper.Callback.makeMovementFlags(0, if (item is Notes.Item.Note) ItemTouchHelper.RIGHT else 0)
         }
 
         override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {

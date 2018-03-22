@@ -1,5 +1,6 @@
 package hu.nemi.costate.notes.impl
 
+import hu.nemi.costate.di.Background
 import hu.nemi.costate.notes.db.NoteEntity
 import hu.nemi.costate.notes.db.NotesDao
 import hu.nemi.costate.notes.impl.NotesImpl.Message
@@ -11,9 +12,10 @@ import hu.nemi.store.Middleware.Chain.Next
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.launch
 import java.util.*
+import javax.inject.Inject
 import kotlin.coroutines.experimental.CoroutineContext
 
-class NotesPersistence(private val dao: NotesDao, private val context: CoroutineContext) : Middleware<State, Message> {
+class NotesPersistence @Inject constructor(private val dao: NotesDao, @Background val context: CoroutineContext) : Middleware<State, Message> {
     private val job = Job()
 
     override fun dispatch(dispatcher: Dispatcher<Message>, state: State, message: Message, next: Next<State, Message>) {
