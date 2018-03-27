@@ -1,24 +1,10 @@
 apply plugin: 'java-library'
 apply plugin: 'kotlin'
 
-buildscript {
-    ext.kotlin_version = '1.2.30'
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
-
-repositories {
-    mavenCentral()
-}
-
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':store')
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.22.3'
+    implementation deps.kotlinStdLib
+    compileOnly deps.kotlinCoroutines
 }
 
 kotlin {

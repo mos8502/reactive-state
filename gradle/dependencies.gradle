@@ -1,0 +1,44 @@
+ext.kotlinVersion = '1.2.30'
+
+ext {
+
+    versions = [
+            androidSupport  : "27.1.0",
+            kotlinCoroutines: "0.22.3",
+            room            : "1.0.0",
+            lifecycle       : "1.1.1",
+            dagger          : "2.14.1"
+    ]
+
+    deps = [
+            kotlinStdLib           : "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion",
+            kotlinCoroutines       : "org.jetbrains.kotlinx:kotlinx-coroutines-core:${versions.kotlinCoroutines}",
+            kotlinCoroutinesAndroid: "org.jetbrains.kotlinx:kotlinx-coroutines-android:${versions.kotlinCoroutines}",
+            kotlinCoroutinesRx2    : "org.jetbrains.kotlinx:kotlinx-coroutines-rx2:${versions.kotlinCoroutines}",
+
+            rxJava2                : "io.reactivex.rxjava2:rxjava:2.1.10",
+            rxJava2Android         : "io.reactivex.rxjava2:rxandroid:2.0.2",
+
+            appcompat              : "com.android.support:appcompat-v7:${versions.androidSupport}",
+            recyclerView           : "com.android.support:recyclerview-v7:${versions.androidSupport}",
+            supportDesign          : "com.android.support:design:${versions.androidSupport}",
+
+            constraintLayout       : "com.android.support.constraint:constraint-layout:1.0.2",
+
+            roomRuntime            : "android.arch.persistence.room:runtime:1.0.0",
+            roomCompiler           : "android.arch.persistence.room:compiler:${versions.room}",
+            roomRxJava2            : "android.arch.persistence.room:rxjava2:${versions.room}",
+
+            lifecycleViewModel     : "android.arch.lifecycle:viewmodel:${versions.lifecycle}",
+            lifecycleExtensions    : "android.arch.lifecycle:extensions:${versions.lifecycle}",
+
+            dagger                 : "com.google.dagger:dagger:${versions.dagger}",
+            daggerCompiler         : "com.google.dagger:dagger-compiler:${versions.dagger}",
+    ]
+
+    testDeps = [
+            junit            : "junit:junit:4.12",
+            supportTestRunner: "com.android.support.test:runner:1.0.1",
+            espressoCore     : "com.android.support.test.espresso:espresso-core:3.0.1"
+    ]
+}

@@ -25,27 +25,33 @@ android {
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
-    implementation 'com.android.support:appcompat-v7:27.1.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.22.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.22.3'
-    implementation 'android.arch.persistence.room:runtime:1.0.0'
-    implementation 'com.android.support.constraint:constraint-layout:1.0.2'
-    implementation 'com.android.support:design:27.1.0'
-    kapt "android.arch.persistence.room:compiler:1.0.0"
-    implementation 'android.arch.persistence.room:rxjava2:1.0.0'
-    implementation 'android.arch.lifecycle:viewmodel:1.1.0'
-    implementation 'android.arch.lifecycle:extensions:1.1.0'
-    implementation 'com.google.dagger:dagger:2.14.1'
-    kapt 'com.google.dagger:dagger-compiler:2.14.1'
-    implementation 'io.reactivex.rxjava2:rxjava:2.1.10'
-    implementation 'io.reactivex.rxjava2:rxandroid:2.0.2'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-rx2:0.22.3'
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'com.android.support.test:runner:1.0.1'
-    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
-    implementation 'com.android.support:recyclerview-v7:27.1.0'
+    implementation deps.kotlinStdLib
+
+    implementation deps.kotlinCoroutines
+    implementation deps.kotlinCoroutinesAndroid
+    implementation deps.kotlinCoroutinesRx2
+
+    implementation deps.roomRuntime
+    implementation deps.roomRxJava2
+    kapt deps.roomCompiler
+
+    implementation deps.constraintLayout
+    implementation deps.supportDesign
+    implementation deps.appcompat
+    implementation deps.recyclerView
+
+    implementation deps.lifecycleViewModel
+    implementation deps.lifecycleExtensions
+
+    implementation deps.dagger
+    kapt deps.daggerCompiler
+
+    implementation deps.rxJava2
+    implementation deps.rxJava2Android
+
+    testImplementation testDeps.junit
+    androidTestImplementation testDeps.supportTestRunner
+    androidTestImplementation testDeps.espressoCore
 
     implementation project(':store')
     implementation project(':store-coroutines')
