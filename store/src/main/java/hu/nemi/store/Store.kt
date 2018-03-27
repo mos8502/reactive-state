@@ -3,17 +3,14 @@ package hu.nemi.store
 import java.io.Closeable
 import java.lang.ref.WeakReference
 import java.util.ConcurrentModificationException
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 interface MessageSink<Message> {
     fun dispatch(message: Message)
 }
 
-interface Store<State, Message> : MessageSink<Message> {
-    /**
-     * Set listener that will be invoked when the store state changes.
-     */
-    fun onStateChanged(block: (State) -> Unit)
+interface Store<StateType, MessageType> : MessageSink<MessageType> {
+    fun subscribe(block: (StateType) -> Unit): Closeable
 }
 
 interface Dispatcher<Message> : MessageSink<Message>, Closeable
@@ -117,47 +114,36 @@ private class MiddlewareChainNextImpl<State, Message>(private val iterator: Iter
     }
 }
 
-private class StoreImpl<State, Message>(initialState: State,
-                                        val reduce: (State, Message) -> State) : Store<State, Message> {
-    private val inTransaction = AtomicBoolean(false)
-    @Volatile
-    private var state: State = initialState
-    @Volatile
-    private var listener: (State) -> Unit = {}
+private class StoreImpl<StateType, MessageType>(initialState: StateType,
+                                                val reduce: (StateType, MessageType) -> StateType) : Store<StateType, MessageType> {
+    @Volatile private var subscribers: Set<(StateType) -> Unit> = emptySet()
+    @Volatile private var state: StateType = initialState
+    private val currentThread = AtomicLong(-1L)
 
-    override fun onStateChanged(block: (State) -> Unit) = inTransaction {
-        if (listener != block) {
-            listener = block
-            block(state)
-        }
-    }
 
-    override fun dispatch(message: Message) = inTransaction {
+    override fun dispatch(message: MessageType) = inTransaction {
         val newState = reduce(state, message)
-        if (newState != state) {
+        if(newState != state) {
             state = newState
-            listener(newState)
+            subscribers.forEach { it(newState) }
         }
     }
 
-    private fun <R> inTransaction(block: () -> R): R {
-        beginTransaction()
+    override fun subscribe(block: (StateType) -> Unit): Closeable = inTransaction {
+        subscribers += block
+        block(state)
+        Closeable {
+            inTransaction { subscribers -= block }
+        }
+    }
+
+    private fun <R> inTransaction(block: () -> R): R = if (currentThread.compareAndSet(-1, Thread.currentThread().id)) {
         try {
-            return block()
+            block()
         } finally {
-            endTransaction()
+            currentThread.set(-1)
         }
-    }
-
-    private fun beginTransaction() {
-        if (!inTransaction.compareAndSet(false, true)) {
-            throw ConcurrentModificationException()
-        }
-    }
-
-    private fun endTransaction() {
-        if (!inTransaction.compareAndSet(true, false)) {
-            throw ConcurrentModificationException()
-        }
+    } else {
+        throw IllegalStateException("concurrent access to state not allowed")
     }
 }

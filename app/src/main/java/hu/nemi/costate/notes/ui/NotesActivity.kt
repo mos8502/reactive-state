@@ -32,13 +32,13 @@ class NotesActivity : AppCompatActivity() {
         override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder) = false
 
         override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {
-            val item = adapter.notes[viewHolder.adapterPosition]
+            val item = adapter.getItem(viewHolder.adapterPosition)
 
             return ItemTouchHelper.Callback.makeMovementFlags(0, if (item is Notes.Item.Note) ItemTouchHelper.RIGHT else 0)
         }
 
         override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-            (adapter.notes[viewHolder.adapterPosition] as Notes.Item.Note).delete()
+            (adapter.getItem(viewHolder.adapterPosition) as Notes.Item.Note).delete()
         }
 
         override fun onChildDraw(canvas: Canvas, recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, dX: Float, dY: Float, actionState: Int, isCurrentlyActive: Boolean) {
@@ -67,7 +67,7 @@ class NotesActivity : AppCompatActivity() {
         subscription = ViewModelProviders.of(this, notesComponent.viewModelFactory)
                 .get(NotesViewModel::class.java)
                 .onNotesChanged {
-                    adapter.notes = it.notes
+                    adapter.submitList(it.notes)
                 }
     }
 

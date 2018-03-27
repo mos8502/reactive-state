@@ -4,11 +4,8 @@ import hu.nemi.store.Middleware
 import hu.nemi.store.Store
 import hu.nemi.store.StoreDispatcher
 import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.channels.ConflatedBroadcastChannel
-import kotlinx.coroutines.experimental.channels.actor
-import kotlinx.coroutines.experimental.channels.consumeEach
+import kotlinx.coroutines.experimental.channels.*
 import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
 import kotlinx.coroutines.experimental.selects.select
 import java.io.Closeable
 import kotlin.coroutines.experimental.CoroutineContext
@@ -35,7 +32,7 @@ private class CoroutineStoreDispatcherImpl<State, Message>(private val store: St
     private val job = Job()
     private val _state = ConflatedBroadcastChannel<State>()
     private val actor = actor<Message>(context = messageDispatcher, parent = job) {
-        store.onStateChanged { state -> _state.offer(state) }
+        store.subscribe { state -> _state.offer(state) }
         while (isActive) {
             select<Unit> {
                 channel.onReceive { message ->

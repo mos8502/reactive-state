@@ -5,5 +5,7 @@ import hu.nemi.costate.di.DaggerNotesComponent
 import hu.nemi.costate.di.NotesComponent
 
 class NotesApplication: Application(), NotesComponent.Holder {
-    override val component: NotesComponent = DaggerNotesComponent.builder().context(this).build()
+    override val component: NotesComponent by lazy {
+        DaggerNotesComponent.builder().context(this).build()
+    }
 }

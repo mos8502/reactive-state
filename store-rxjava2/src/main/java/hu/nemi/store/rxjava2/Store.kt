@@ -32,7 +32,7 @@ private class RxStoreDispatcher<State, Message>(val store: Store<State, Message>
     private val disposable: Disposable
 
     init {
-        store.onStateChanged(state::onNext)
+        store.subscribe(state::onNext)
         disposable = messages.withLatestFrom(state, BiFunction<Message, State, Pair<Message, State>> { message, state -> Pair(message, state) })
                 .observeOn(messageDispatcher)
                 .subscribe {

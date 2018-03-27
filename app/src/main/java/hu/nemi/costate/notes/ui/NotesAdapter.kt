@@ -1,18 +1,13 @@
 package hu.nemi.costate.notes.ui
 
+import android.support.v7.recyclerview.extensions.ListAdapter
 import android.support.v7.util.DiffUtil
 import android.support.v7.widget.RecyclerView
 import android.view.View
 import android.view.ViewGroup
 import hu.nemi.costate.notes.Notes
-import hu.nemi.costate.util.SimpleDiffCallkback
-import kotlin.properties.Delegates
 
-class NotesAdapter : RecyclerView.Adapter<NotesViewHolder>() {
-    var notes: List<Notes.Item> by Delegates.observable(emptyList()) { _, oldNotes, newNotes ->
-        DiffUtil.calculateDiff(SimpleDiffCallkback(oldItems = oldNotes, newItems = newNotes, id = Notes.Item::id))
-                .dispatchUpdatesTo(this)
-    }
+class NotesAdapter : ListAdapter<Notes.Item, NotesViewHolder>(NotesDiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NotesViewHolder =
             when (viewType) {
@@ -23,16 +18,18 @@ class NotesAdapter : RecyclerView.Adapter<NotesViewHolder>() {
             }
 
 
-    override fun getItemCount(): Int = notes.size
-
-    override fun getItemViewType(position: Int): Int = when (notes[position]) {
+    override fun getItemViewType(position: Int): Int = when (getItem(position)) {
         is Notes.Item.Note -> VIEW_TYPE_NOTE
         is Notes.Item.Edit -> VIEW_TYPE_EDIT
         is Notes.Item.Create -> VIEW_TYPE_CREATE
     }
 
     override fun onBindViewHolder(holder: NotesViewHolder, position: Int) =
-            holder.bind(notes[position])
+            holder.bind(getItem(position))
+
+    public override fun getItem(position: Int): Notes.Item {
+        return super.getItem(position)
+    }
 
     private companion object {
         const val VIEW_TYPE_NOTE = 0x1
@@ -50,4 +47,12 @@ class NotesViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
     inline fun <reified T : Notes.Item> bind(model: T) {
         (itemView as BindableView<T>).bind(model)
     }
+}
+
+private object NotesDiffCallback: DiffUtil.ItemCallback<Notes.Item>() {
+    override fun areItemsTheSame(oldItem: Notes.Item, newItem: Notes.Item): Boolean =
+            oldItem.id == newItem.id
+
+    override fun areContentsTheSame(oldItem: Notes.Item, newItem: Notes.Item): Boolean =
+            oldItem == newItem
 }
