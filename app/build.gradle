@@ -7,14 +7,14 @@ apply plugin: 'kotlin-kapt'
 apply plugin: 'kotlin-android-extensions'
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion Android.compileSdkVersion
     defaultConfig {
-        applicationId "hu.nemi.costate"
-        minSdkVersion 24
-        targetSdkVersion 27
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        applicationId Android.defaultConfig.applicationId
+        minSdkVersion Android.defaultConfig.minSdkVersion
+        targetSdkVersion Android.defaultConfig.targetSdkVersion
+        versionCode Android.defaultConfig.versionCode
+        versionName Android.defaultConfig.versionName
+        testInstrumentationRunner Android.defaultConfig.testInstrumentationRunner
     }
     buildTypes {
         release {
@@ -25,33 +25,33 @@ android {
 }
 
 dependencies {
-    implementation deps.kotlinStdLib
+    implementation Deps.kotlinStdLib
 
-    implementation deps.kotlinCoroutines
-    implementation deps.kotlinCoroutinesAndroid
-    implementation deps.kotlinCoroutinesRx2
+    implementation Deps.kotlinCoroutines
+    implementation Deps.kotlinCoroutinesAndroid
+    implementation Deps.kotlinCoroutinesRx2
 
-    implementation deps.roomRuntime
-    implementation deps.roomRxJava2
-    kapt deps.roomCompiler
+    implementation Deps.roomRuntime
+    implementation Deps.roomRxJava2
+    kapt Deps.roomCompiler
 
-    implementation deps.constraintLayout
-    implementation deps.supportDesign
-    implementation deps.appcompat
-    implementation deps.recyclerView
+    implementation Deps.constraintLayout
+    implementation Deps.supportDesign
+    implementation Deps.appcompat
+    implementation Deps.recyclerView
 
-    implementation deps.lifecycleViewModel
-    implementation deps.lifecycleExtensions
+    implementation Deps.lifecycleViewModel
+    implementation Deps.lifecycleExtensions
 
-    implementation deps.dagger
-    kapt deps.daggerCompiler
+    implementation Deps.dagger
+    kapt Deps.daggerCompiler
 
-    implementation deps.rxJava2
-    implementation deps.rxJava2Android
+    implementation Deps.rxJava2
+    implementation Deps.rxJava2Android
 
-    testImplementation testDeps.junit
-    androidTestImplementation testDeps.supportTestRunner
-    androidTestImplementation testDeps.espressoCore
+    testImplementation TestDeps.junit
+    androidTestImplementation TestDeps.supportTestRunner
+    androidTestImplementation TestDeps.espressoCore
 
     implementation project(':store')
     implementation project(':store-coroutines')

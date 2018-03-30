@@ -3,8 +3,8 @@ apply plugin: 'kotlin'
 
 dependencies {
     implementation project(':store')
-    implementation deps.kotlinStdLib
-    compileOnly deps.kotlinCoroutines
+    implementation Deps.kotlinStdLib
+    compileOnly Deps.kotlinCoroutines
 }
 
 kotlin {

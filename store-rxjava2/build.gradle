@@ -3,8 +3,8 @@ apply plugin: 'java-library'
 apply plugin: 'kotlin'
 
 dependencies {
-    compileOnly deps.rxJava2
-    compile deps.kotlinStdLib
+    compileOnly Deps.rxJava2
+    compile Deps.kotlinStdLib
     implementation project(':store')
 }
 
