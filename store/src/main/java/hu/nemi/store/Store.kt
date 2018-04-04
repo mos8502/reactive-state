@@ -118,12 +118,11 @@ private class StoreImpl<StateType, MessageType>(initialState: StateType,
                                                 val reduce: (StateType, MessageType) -> StateType) : Store<StateType, MessageType> {
     @Volatile private var subscribers: Set<(StateType) -> Unit> = emptySet()
     @Volatile private var state: StateType = initialState
-    private val currentThread = AtomicLong(-1L)
-
+    private val lock = ThreadLock()
 
     override fun dispatch(message: MessageType) = inTransaction {
         val newState = reduce(state, message)
-        if(newState != state) {
+        if (newState != state) {
             state = newState
             subscribers.forEach { it(newState) }
         }
@@ -137,13 +136,32 @@ private class StoreImpl<StateType, MessageType>(initialState: StateType,
         }
     }
 
-    private fun <R> inTransaction(block: () -> R): R = if (currentThread.compareAndSet(-1, Thread.currentThread().id)) {
-        try {
-            block()
-        } finally {
-            currentThread.set(-1)
+    private fun <R> inTransaction(block: () -> R): R = lock.acquire().use {
+        block()
+    }
+}
+
+/**
+ * Non blocking "lock" for accessing resources from different threads in a non blocking fashion.
+ * Used by [StoreImpl] to prevent concurrent access
+ */
+private class ThreadLock {
+    private val accessingThread = AtomicLong(-1L)
+
+    private val lock = Closeable {
+        if (!accessingThread.compareAndSet(Thread.currentThread().id, -1L)) {
+            throw ConcurrentModificationException()
         }
-    } else {
-        throw IllegalStateException("concurrent access to state not allowed")
+    }
+
+    /**
+     * Acquire lock
+     *
+     * @return [Closeable] to release the lock. Invoking [Closeable.close] will release the lock. The lock can only be released from the thread where it has been acquired otherwise [Closeable.close] throws [ConcurrentModificationException]
+     * @throws ConcurrentModificationException if the lock has already been acquired from another thread
+     */
+    fun acquire(): Closeable = Thread.currentThread().id.let { threadId ->
+        if (threadId == accessingThread.get() || accessingThread.compareAndSet(-1, threadId)) lock
+        else throw ConcurrentModificationException()
     }
 }
