@@ -3,6 +3,10 @@ apply plugin: 'kotlin'
 
 dependencies {
     compileOnly Deps.kotlinStdLib
+
+    testImplementation TestDeps.junit
+    testImplementation TestDeps.mockitoCore
+    testImplementation TestDeps.mockitoKotlin
 }
 
 sourceCompatibility = "1.7"

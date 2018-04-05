@@ -5,6 +5,9 @@ object Versions : Configuration("gradle/versions.properties") {
     val room by string()
     val lifecycle by string()
     val dagger by string()
+    val mockitoCore by string()
+    val mockitoKotlin by string()
+    val junit by string()
 }
 
 object Android : Configuration("gradle/android.properties") {
@@ -22,7 +25,7 @@ object Android : Configuration("gradle/android.properties") {
 }
 
 object Plugins {
-    val androidTools = "com.android.tools.build:gradle:3.2.0-alpha08"
+    val androidTools = "com.android.tools.build:gradle:3.2.0-alpha09"
     val kotlin = "org.jetbrains.kotlin:kotlin-gradle-plugin:${Versions.kotlin}"
 }
 
@@ -53,7 +56,9 @@ object Deps {
 }
 
 object TestDeps {
-    val junit = "junit:junit:4.12"
+    val junit = "junit:junit:${Versions.junit}"
     val supportTestRunner = "com.android.support.test:runner:1.0.1"
     val espressoCore = "com.android.support.test.espresso:espresso-core:3.0.1"
+    val mockitoCore = "org.mockito:mockito-core:${Versions.mockitoCore}"
+    val mockitoKotlin = "com.nhaarman:mockito-kotlin:${Versions.mockitoKotlin}"
 }

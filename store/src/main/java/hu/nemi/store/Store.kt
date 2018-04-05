@@ -129,8 +129,10 @@ private class StoreImpl<StateType, MessageType>(initialState: StateType,
     }
 
     override fun subscribe(block: (StateType) -> Unit): Closeable = inTransaction {
-        subscribers += block
-        block(state)
+        if(!subscribers.contains(block)) {
+            subscribers += block
+            block(state)
+        }
         Closeable {
             inTransaction { subscribers -= block }
         }
@@ -147,11 +149,13 @@ private class StoreImpl<StateType, MessageType>(initialState: StateType,
  */
 private class ThreadLock {
     private val accessingThread = AtomicLong(-1L)
+    @Volatile var accessCount = 0
 
     private val lock = Closeable {
-        if (!accessingThread.compareAndSet(Thread.currentThread().id, -1L)) {
-            throw ConcurrentModificationException()
-        }
+        // is the accessing thread equal to the current thread
+        if (accessingThread.get() != Thread.currentThread().id) throw ConcurrentModificationException()
+        if (accessCount == 0) throw IllegalStateException("invalid release count")
+        if (--accessCount == 0) accessingThread.set(-1L)
     }
 
     /**
@@ -161,7 +165,11 @@ private class ThreadLock {
      * @throws ConcurrentModificationException if the lock has already been acquired from another thread
      */
     fun acquire(): Closeable = Thread.currentThread().id.let { threadId ->
-        if (threadId == accessingThread.get() || accessingThread.compareAndSet(-1, threadId)) lock
-        else throw ConcurrentModificationException()
+        if (threadId == accessingThread.get() || accessingThread.compareAndSet(-1, threadId)) {
+            accessCount++
+            lock
+        } else {
+            throw ConcurrentModificationException()
+        }
     }
 }
