@@ -54,7 +54,6 @@ dependencies {
     androidTestImplementation TestDeps.espressoCore
 
     implementation project(':store')
-    implementation project(':store-coroutines')
 }
 
 kotlin {

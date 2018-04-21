@@ -1,10 +1,10 @@
 package hu.nemi.costate.di
 
 import android.arch.lifecycle.ViewModelProvider
-import dagger.Component
-import javax.inject.Singleton
 import android.content.Context
 import dagger.BindsInstance
+import dagger.Component
+import javax.inject.Singleton
 
 @Singleton
 @Component(modules = [NotesModule::class, ViewModelModule::class, CoroutinesModule::class, DatabaseModule::class])
@@ -14,7 +14,7 @@ interface NotesComponent {
     @Component.Builder
     interface Builder {
         @BindsInstance
-        fun context(context: Context): Builder
+        fun withContext(context: Context): Builder
 
         fun build(): NotesComponent
     }

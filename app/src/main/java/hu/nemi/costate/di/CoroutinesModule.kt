@@ -8,9 +8,9 @@ import kotlin.coroutines.experimental.CoroutineContext
 
 @Module
 object CoroutinesModule {
-    @get:[Provides Main] @JvmStatic
+    @get:[Provides StoreDispatcher] @JvmStatic
     val mainDispatcher: CoroutineContext = UI
 
-    @get:[Provides Background] @JvmStatic
+    @get:[Provides BackgroundDispatcher] @JvmStatic
     val backgroundDispatcher: CoroutineContext = DefaultDispatcher
 }

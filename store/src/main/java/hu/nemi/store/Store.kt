@@ -1,175 +1,147 @@
 package hu.nemi.store
 
-import java.io.Closeable
-import java.lang.ref.WeakReference
-import java.util.ConcurrentModificationException
 import java.util.concurrent.atomic.AtomicLong
+import java.util.ConcurrentModificationException
 
-interface MessageSink<Message> {
-    fun dispatch(message: Message)
+typealias ActionCreator<StateType, ActionType> = (StateType) -> Optional<ActionType>
+
+interface AsyncActionCreator<StateType, ActionType, ReturnType> : ActionCreator<StateType, ActionType> {
+    fun onCreated(state: StateType): ReturnType
 }
 
-interface Store<StateType, MessageType> : MessageSink<MessageType> {
-    fun subscribe(block: (StateType) -> Unit): Closeable
+interface Dispatcher<in ActionType, out ReturnType> {
+    fun dispatch(action: ActionType): ReturnType
 }
 
-interface Dispatcher<Message> : MessageSink<Message>, Closeable
-/**
- * Contract for dispatchers that are responsible for dispatching messages
- * to a [Store] and allow subscription to store state changes
- */
-interface StoreDispatcher<State, Message> : Dispatcher<Message> {
-    /**
-     * Subscribe to state changes
-     *
-     * @param block callback to bne invoked when state changes
-     * @return subscription in the form  of a [Closeable]. Call [Closeable.close] to unsubscribe from state changes
-     */
-    fun subscribe(block: (State) -> Unit): Closeable
+
+interface Store<StateType, ActionType> : Dispatcher<ActionType, Unit>, Observable<StateType> {
+    fun dispatch(actionCreator: ActionCreator<StateType, ActionType>)
+
+    fun <ReturnType> dispatch(actionCreator: AsyncActionCreator<StateType, ActionType, ReturnType>): Optional<ReturnType>
 }
 
-/**
- * Middleware contract to do side effecty things :)
- */
-interface Middleware<State, Message> : Closeable {
-    /**
-     * Dispatch message to middleware
-     *
-     * @param dispatcher dispatcher to send messages to if needed
-     * @param state the current state
-     * @param message message being dispatched
-     * @param next next item in dispatch chain
-     */
-    fun dispatch(dispatcher: Dispatcher<Message>, state: State, message: Message, next: Chain.Next<State, Message>)
+interface Middleware<StateType, ActionType> {
+    fun dispatch(store: Dispatcher<ActionType, Unit>, state: StateType, action: ActionType, next: Dispatcher<ActionType, Optional<ActionType>>): Optional<ActionType>
+}
 
-    /**
-     * Contract for dispatch chain
-     */
-    interface Chain<State, Message> : Closeable {
-        /**
-         * Dispatch message to chain
-         *
-         * @param dispatcher dispatcher used to dispatch messages to the chain
-         * @param state the current state
-         * @param message message being dispatched
-         */
-        fun dispatch(dispatcher: Dispatcher<Message>, state: State, message: Message)
+fun <StateType, ActionType> Store(initialState: StateType,
+                                  reducer: (StateType, ActionType) -> StateType,
+                                  middlewares: Iterable<Middleware<StateType, ActionType>> = emptyList()): Store<StateType, ActionType> =
+        StoreImpl(initialState, reducer, middlewares)
 
-        /**
-         * Contract for items in the dispatch chain
-         */
-        interface Next<State, Message> {
-            /**
-             * Dispatch message to the next item
-             *
-             * @param dispatcher dispatcher used to dispatch messages
-             * @param state the current state
-             * @param message message being dispatched
-             */
-            fun dispatch(dispatcher: Dispatcher<Message>, state: State, message: Message)
+fun <StateType, ActionType> compose(vararg reducers: (StateType, ActionType) -> StateType): (StateType, ActionType) -> StateType {
+    require(reducers.isNotEmpty()) { "no reducers passed" }
+    return { state, action ->
+        reducers.fold(state) { state, reducer ->
+            reducer.invoke(state, action)
         }
     }
 }
 
-/**
- * Build an instance of [Middleware.Chain] from [Iterable<Middleware>]
- */
-fun <State, Message> middlewareChain(middleware: Iterable<Middleware<State, Message>>): Middleware.Chain<State, Message> = MiddleWareChainImpl(middleware)
+private class MiddlewareDispatcher<StateType, ActionType>(val state: StateType,
+                                                          val store: Dispatcher<ActionType, Unit>,
+                                                          middlewares: Iterable<Middleware<StateType, ActionType>>) : Dispatcher<ActionType, Optional<ActionType>> {
+    private val middlewareIterator = middlewares.iterator()
+    private val next = object : Dispatcher<ActionType, Optional<ActionType>> {
+        override fun dispatch(action: ActionType): Optional<ActionType> {
+            return if (middlewareIterator.hasNext()) middlewareIterator.next().dispatch(store = store, state = state, action = action, next = this)
+            else action.asOptional()
+        }
 
-/**
- * Returns an implementation of [Store] that doesn't allow concurrent updates to a store.
- * In case of concurrent modifications call both to [Store.dispatch] and [Store.onStateChanged]
- * will throw [ConcurrentModificationException]
- *
- * @param initialState initial state of the store
- * @param reducer the reducer
- */
-fun <State, Message> store(initialState: State,
-                           reducer: (State, Message) -> State): Store<State, Message> = StoreImpl(initialState, reducer)
-
-private class MiddleWareChainImpl<State, Message>(private val middleware: Iterable<Middleware<State, Message>>) : Middleware.Chain<State, Message> {
-
-    override fun dispatch(dispatcher: Dispatcher<Message>, state: State, message: Message) {
-        MiddlewareChainNextImpl(middleware.iterator()).dispatch(DispatcherRef(dispatcher), state, message)
     }
 
-    override fun close() = middleware.forEach { it.close() }
+    override fun dispatch(action: ActionType): Optional<ActionType> = next.dispatch(action)
 }
 
-private class DispatcherRef<Message>(target: Dispatcher<Message>) : WeakReference<Dispatcher<Message>>(target), Dispatcher<Message> {
-    override fun dispatch(message: Message) {
-        get()?.dispatch(message)
+private class StoreImpl<StateType, ActionType>(initialState: StateType,
+                                               private val reducer: (StateType, ActionType) -> StateType,
+                                               private val middlewares: Iterable<Middleware<StateType, ActionType>>) : Store<StateType, ActionType> {
+    @Volatile private var state = initialState
+    @Volatile private var subscribers = emptySet<(StateType) -> Unit>()
+    @Volatile private var isDispatching = false
+    private val lock = StoreLock()
+
+    override fun dispatch(action: ActionType) = locked {
+        require(!isDispatching) { "dispatch already in progress" }
+
+        isDispatching = true
+        val newState = try {
+            val dispatcher = MiddlewareDispatcher(state = state, store = this, middlewares = middlewares)
+            dispatcher.dispatch(action).map { dispatchedAction ->
+                reducer.invoke(state, dispatchedAction)
+            }
+        } finally {
+            isDispatching = false
+        }
+
+        if (newState != Optional.Empty) {
+            state = newState.getOrThrow()
+            subscribers.forEach { subscriber -> subscriber.invoke(state) }
+        }
     }
 
-    override fun close() {
-        get()?.close()
+    override fun dispatch(actionCreator: ActionCreator<StateType, ActionType>) {
+        actionCreator.invoke(state).map(::dispatch)
     }
-}
 
-private class MiddlewareChainNextImpl<State, Message>(private val iterator: Iterator<Middleware<State, Message>>) : Middleware.Chain.Next<State, Message> {
-    override fun dispatch(dispatcher: Dispatcher<Message>, state: State, message: Message) {
-        if (iterator.hasNext()) {
-            iterator.next().dispatch(dispatcher, state, message, this)
+    override fun <ReturnType> dispatch(actionCreator: AsyncActionCreator<StateType, ActionType, ReturnType>) = locked {
+        actionCreator.invoke(state)
+                .map { action ->
+                    dispatch(action)
+                    state
+                }
+                .map { state ->
+                    actionCreator.onCreated(state)
+                }
+    }
+
+    override fun subscribe(subscriber: (StateType) -> Unit): Subscription = locked {
+        val subscribers = this.subscribers.toMutableSet()
+        if (subscribers.add(subscriber)) {
+            this.subscribers = subscribers.toSet()
+            subscriber.invoke(state)
+        }
+
+        object : Subscription {
+            override fun unsubscribe() {
+                subscribers -= subscriber
+            }
+        }
+    }
+
+    private fun <R> locked(block: () -> R): R {
+        val lock = this.lock.acquire()
+        return try {
+            block()
+        } finally {
+            lock.release()
         }
     }
 }
 
-private class StoreImpl<StateType, MessageType>(initialState: StateType,
-                                                val reduce: (StateType, MessageType) -> StateType) : Store<StateType, MessageType> {
-    @Volatile private var subscribers: Set<(StateType) -> Unit> = emptySet()
-    @Volatile private var state: StateType = initialState
-    private val lock = ThreadLock()
-
-    override fun dispatch(message: MessageType) = inTransaction {
-        val newState = reduce(state, message)
-        if (newState != state) {
-            state = newState
-            subscribers.forEach { it(newState) }
-        }
-    }
-
-    override fun subscribe(block: (StateType) -> Unit): Closeable = inTransaction {
-        if(!subscribers.contains(block)) {
-            subscribers += block
-            block(state)
-        }
-        Closeable {
-            inTransaction { subscribers -= block }
-        }
-    }
-
-    private fun <R> inTransaction(block: () -> R): R = lock.acquire().use {
-        block()
-    }
-}
-
-/**
- * Non blocking "lock" for accessing resources from different threads in a non blocking fashion.
- * Used by [StoreImpl] to prevent concurrent access
- */
-private class ThreadLock {
+private class StoreLock {
     private val accessingThread = AtomicLong(-1L)
-    @Volatile var accessCount = 0
-
-    private val lock = Closeable {
-        // is the accessing thread equal to the current thread
-        if (accessingThread.get() != Thread.currentThread().id) throw ConcurrentModificationException()
-        if (accessCount == 0) throw IllegalStateException("invalid release count")
-        if (--accessCount == 0) accessingThread.set(-1L)
+    private val lock = object : Lock {
+        override fun release() {
+            if (accessingThread.get() != Thread.currentThread().id) throw ConcurrentModificationException()
+            if (--accessCount == 0) accessingThread.set(-1L)
+        }
     }
 
-    /**
-     * Acquire lock
-     *
-     * @return [Closeable] to release the lock. Invoking [Closeable.close] will release the lock. The lock can only be released from the thread where it has been acquired otherwise [Closeable.close] throws [ConcurrentModificationException]
-     * @throws ConcurrentModificationException if the lock has already been acquired from another thread
-     */
-    fun acquire(): Closeable = Thread.currentThread().id.let { threadId ->
-        if (threadId == accessingThread.get() || accessingThread.compareAndSet(-1, threadId)) {
-            accessCount++
-            lock
+    @Volatile
+    private var accessCount = 0
+
+    fun acquire(): Lock {
+        val threadId = Thread.currentThread().id
+        if (accessingThread.get() == threadId || accessingThread.compareAndSet(-1L, threadId)) {
+            ++accessCount
+            return lock
         } else {
             throw ConcurrentModificationException()
         }
+    }
+
+    interface Lock {
+        fun release()
     }
 }

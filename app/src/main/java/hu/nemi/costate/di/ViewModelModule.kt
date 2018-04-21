@@ -5,8 +5,7 @@ import android.arch.lifecycle.ViewModelProvider
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoMap
-import hu.nemi.costate.notes.NotesViewModel
-import hu.nemi.costate.notes.impl.NotesViewModelImpl
+import hu.nemi.costate.notes.model.NotesViewModel
 
 @Module
 abstract class ViewModelModule {
@@ -14,7 +13,7 @@ abstract class ViewModelModule {
     @Binds
     @IntoMap
     @ViewModelKey(type = NotesViewModel::class)
-    abstract fun bindNotesViewModel(viewModel: NotesViewModelImpl): ViewModel
+    abstract fun bindNotesViewModel(viewModel: NotesViewModel): ViewModel
 
     @Binds
     abstract fun bindViewModelFactory(factory: ViewModelFactory): ViewModelProvider.Factory

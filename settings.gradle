@@ -1,1 +1,1 @@
-include ':app', ':store', ':store-coroutines', ':store-rxjava2'
+include ':app', ':store'

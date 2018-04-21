@@ -6,6 +6,6 @@ import hu.nemi.costate.di.NotesComponent
 
 class NotesApplication: Application(), NotesComponent.Holder {
     override val component: NotesComponent by lazy {
-        DaggerNotesComponent.builder().context(this).build()
+        DaggerNotesComponent.builder().withContext(this).build()
     }
 }

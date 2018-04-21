@@ -4,8 +4,8 @@ import javax.inject.Qualifier
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class Main
+annotation class StoreDispatcher
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class Background
+annotation class BackgroundDispatcher
