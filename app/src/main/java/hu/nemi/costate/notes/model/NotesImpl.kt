@@ -2,9 +2,7 @@ package hu.nemi.costate.notes.model
 
 import hu.nemi.costate.arch.BlockViewModel
 import hu.nemi.costate.notes.db.NoteEntity
-import hu.nemi.costate.notes.usecases.CreateNote
-import hu.nemi.costate.notes.usecases.LoadNotes
-import hu.nemi.costate.notes.usecases.SaveEdit
+import hu.nemi.costate.notes.usecases.*
 import hu.nemi.store.Store
 import hu.nemi.store.Subscription
 import java.util.*
@@ -15,7 +13,8 @@ class NotesViewModel @Inject constructor(private val notes: Notes) : BlockViewMo
 class NotesImpl @Inject constructor(private val store: Store<State, Action>,
                                     private val loadNotes: LoadNotes,
                                     private val saveNote: SaveEdit,
-                                    private val createNote: CreateNote) : Notes {
+                                    private val createNote: CreateNote,
+                                    private val deleteNoteFactory: DeleteNote.Factory) : Notes {
     override fun loadNotes() = loadNotes.execute(store)
 
     override fun onActive() = loadNotes()
@@ -26,7 +25,7 @@ class NotesImpl @Inject constructor(private val store: Store<State, Action>,
     private fun State.toViewState(): ViewState {
         var items = entities.map { note ->
             val delete = ItemAction0(note) {
-                TODO("not implemented")
+                deleteNoteFactory.create(it.id).execute(store)
             }
             val onClicked = ItemAction0(note) {
                 editNote(it)

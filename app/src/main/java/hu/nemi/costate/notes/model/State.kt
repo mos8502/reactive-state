@@ -65,6 +65,8 @@ sealed class Action {
 
     object NewNote : Action()
     data class OnNoteAdded(val entity: NoteEntity): Action()
+
+    data class DeleteNote(val noteId: String): Action()
 }
 
 inline fun <reified A : Action> reducer(crossinline block: (State, A) -> State): (State, Action) -> State = { state, action ->
@@ -127,6 +129,10 @@ val onNoteAdded = reducer<Action.OnNoteAdded> { state, action ->
     state.copy(entities = state.entities + action.entity, editor = null)
 }
 
+val deleteNote = reducer<Action.DeleteNote> { state, action ->
+    state.copy(entities = state.entities.filter { it.id != action.noteId })
+}
+
 val notesReducer = compose(loadNotes,
         notesLoaded,
         failedToLoadNotes,
@@ -137,7 +143,8 @@ val notesReducer = compose(loadNotes,
         onSaveSuccessful,
         onSaveFailed,
         newNote,
-        onNoteAdded)
+        onNoteAdded,
+        deleteNote)
 
 val INITIAL_STATE = State(entities = emptyList(), lastFetched = -1, isLoading = false, error = null, editor = null)
 
