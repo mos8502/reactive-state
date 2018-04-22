@@ -3,11 +3,9 @@ package hu.nemi.store
 import java.util.concurrent.atomic.AtomicLong
 import java.util.ConcurrentModificationException
 
-typealias ActionCreator<StateType, ActionType> = (StateType) -> Optional<ActionType>
+typealias ActionCreator<StateType, ActionType> = (StateType) -> ActionType?
 
-interface AsyncActionCreator<StateType, ActionType, ReturnType> : ActionCreator<StateType, ActionType> {
-    fun onCreated(state: StateType): ReturnType
-}
+typealias AsyncActionCreator<StateType, ActionType> = (StateType, (ActionCreator<StateType, ActionType>) -> Unit) -> Unit
 
 interface Dispatcher<in ActionType, out ReturnType> {
     fun dispatch(action: ActionType): ReturnType
@@ -17,11 +15,11 @@ interface Dispatcher<in ActionType, out ReturnType> {
 interface Store<StateType, ActionType> : Dispatcher<ActionType, Unit>, Observable<StateType> {
     fun dispatch(actionCreator: ActionCreator<StateType, ActionType>)
 
-    fun <ReturnType> dispatch(actionCreator: AsyncActionCreator<StateType, ActionType, ReturnType>): Optional<ReturnType>
+    fun dispatch(asyncActionCreator: AsyncActionCreator<StateType, ActionType>)
 }
 
 interface Middleware<StateType, ActionType> {
-    fun dispatch(store: Dispatcher<ActionType, Unit>, state: StateType, action: ActionType, next: Dispatcher<ActionType, Optional<ActionType>>): Optional<ActionType>
+    fun dispatch(store: Dispatcher<ActionType, Unit>, state: StateType, action: ActionType, next: Dispatcher<ActionType, ActionType?>): ActionType?
 }
 
 fun <StateType, ActionType> Store(initialState: StateType,
@@ -40,17 +38,17 @@ fun <StateType, ActionType> compose(vararg reducers: (StateType, ActionType) -> 
 
 private class MiddlewareDispatcher<StateType, ActionType>(val state: StateType,
                                                           val store: Dispatcher<ActionType, Unit>,
-                                                          middlewares: Iterable<Middleware<StateType, ActionType>>) : Dispatcher<ActionType, Optional<ActionType>> {
+                                                          middlewares: Iterable<Middleware<StateType, ActionType>>) : Dispatcher<ActionType, ActionType?> {
     private val middlewareIterator = middlewares.iterator()
-    private val next = object : Dispatcher<ActionType, Optional<ActionType>> {
-        override fun dispatch(action: ActionType): Optional<ActionType> {
+    private val next = object : Dispatcher<ActionType, ActionType?> {
+        override fun dispatch(action: ActionType): ActionType? {
             return if (middlewareIterator.hasNext()) middlewareIterator.next().dispatch(store = store, state = state, action = action, next = this)
-            else action.asOptional()
+            else action
         }
 
     }
 
-    override fun dispatch(action: ActionType): Optional<ActionType> = next.dispatch(action)
+    override fun dispatch(action: ActionType): ActionType? = next.dispatch(action)
 }
 
 private class StoreImpl<StateType, ActionType>(initialState: StateType,
@@ -67,44 +65,41 @@ private class StoreImpl<StateType, ActionType>(initialState: StateType,
         isDispatching = true
         val newState = try {
             val dispatcher = MiddlewareDispatcher(state = state, store = this, middlewares = middlewares)
-            dispatcher.dispatch(action).map { dispatchedAction ->
+            dispatcher.dispatch(action)?.let { dispatchedAction ->
                 reducer.invoke(state, dispatchedAction)
             }
         } finally {
             isDispatching = false
         }
 
-        if (newState != Optional.Empty) {
-            state = newState.getOrThrow()
+        if (newState != null) {
+            state = newState
             subscribers.forEach { subscriber -> subscriber.invoke(state) }
         }
     }
 
     override fun dispatch(actionCreator: ActionCreator<StateType, ActionType>) {
-        actionCreator.invoke(state).map(::dispatch)
+        actionCreator.invoke(state)?.let(::dispatch)
     }
 
-    override fun <ReturnType> dispatch(actionCreator: AsyncActionCreator<StateType, ActionType, ReturnType>) = locked {
-        actionCreator.invoke(state)
-                .map { action ->
-                    dispatch(action)
-                    state
-                }
-                .map { state ->
-                    actionCreator.onCreated(state)
-                }
+    override fun dispatch(asyncActionCreator: AsyncActionCreator<StateType, ActionType>) {
+        locked {
+            asyncActionCreator(state) { actionCreator ->
+                dispatch(actionCreator)
+            }
+        }
     }
 
-    override fun subscribe(subscriber: (StateType) -> Unit): Subscription = locked {
+    override fun subscribe(block: (StateType) -> Unit): Subscription = locked {
         val subscribers = this.subscribers.toMutableSet()
-        if (subscribers.add(subscriber)) {
+        if (subscribers.add(block)) {
             this.subscribers = subscribers.toSet()
-            subscriber.invoke(state)
+            block.invoke(state)
         }
 
         object : Subscription {
             override fun unsubscribe() {
-                subscribers -= subscriber
+                subscribers -= block
             }
         }
     }

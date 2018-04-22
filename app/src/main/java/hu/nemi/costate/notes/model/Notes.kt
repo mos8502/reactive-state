@@ -9,6 +9,21 @@ interface NotesApi : Block<ViewState> {
 
 interface Notes : NotesApi, BlockLifecycleCallback
 
-data class ViewState(val notes: List<NoteItem>)
+data class ViewState(val notes: List<ListItem>)
 
-data class NoteItem(val id: String, val text: String)
+sealed class ListItem {
+    data class NoteItem(val id: String,
+                        val text: String,
+                        val delete: () -> Unit,
+                        val onClicked: () -> Unit) : ListItem()
+
+    data class EditorItem(val id: String?,
+                          val text: String,
+                          val error: Throwable?,
+                          val isSaving: Boolean,
+                          val cancel: () -> Unit,
+                          val save: () -> Unit,
+                          val setText: (String) -> Unit) : ListItem()
+
+    data class AddItem(val add: () -> Unit): ListItem()
+}

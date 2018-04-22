@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<merge xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    tools:layout_width="match_parent"
-    tools:layout_height="wrap_content"
-    tools:parentTag="android.support.constraint.ConstraintLayout">
+    android:background="?attr/selectableItemBackground"
+    android:padding="@dimen/note_item_inset"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
     <ImageView
         android:id="@+id/addIcon"
         android:src="@drawable/ic_add"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="@dimen/key_line"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"/>
@@ -20,13 +19,11 @@
         android:gravity="start|center_vertical"
         android:text="@string/label_add"
         android:textColor="?attr/colorAccent"
-        android:textSize="@dimen/line_item_text_size"
+        android:textSize="@dimen/note_text"
         android:ellipsize="end"
-        android:layout_marginTop="@dimen/key_line"
-        android:layout_marginBottom="@dimen/key_line"
-        android:layout_marginEnd="@dimen/key_line"
+        android:layout_marginStart="@dimen/key_line"
         app:layout_constraintStart_toEndOf="@+id/addIcon"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
-</merge>
+</android.support.constraint.ConstraintLayout>

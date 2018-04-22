@@ -3,5 +3,6 @@
     android:id="@+id/text"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="16dp"
+    android:padding="@dimen/note_item_inset"
+    android:textSize="@dimen/note_text"
     android:gravity="start|center_vertical" />

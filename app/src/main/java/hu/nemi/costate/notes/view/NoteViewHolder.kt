@@ -1,28 +1,38 @@
 package hu.nemi.costate.notes.view
 
 import android.support.v7.widget.RecyclerView
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
-import hu.nemi.costate.R
-import hu.nemi.costate.notes.model.NoteItem
-import kotlinx.android.synthetic.main.view_notes.view.*
+import hu.nemi.costate.notes.model.ListItem
 
-class NoteView private constructor(val view: View) {
-    private val note by lazy { view.text }
-
-    fun bind(noteItem: NoteItem) {
-        note.text = noteItem.text
+interface ListItemView {
+    val view: View
+    fun bind(listItem: ListItem) = when (listItem) {
+        is ListItem.NoteItem -> bind(listItem)
+        is ListItem.EditorItem -> bind(listItem)
+        is ListItem.AddItem -> bind(listItem)
     }
 
-    companion object {
-        operator fun invoke(parent: ViewGroup): NoteView =
-                NoteView(LayoutInflater.from(parent.context).inflate(R.layout.view_notes, parent, false))
+    fun bind(noteItem: ListItem.NoteItem) {
+        throw UnsupportedOperationException()
     }
+
+    fun bind(editorItem: ListItem.EditorItem) {
+        throw UnsupportedOperationException()
+    }
+
+    fun bind(addItem: ListItem.AddItem) {
+        throw UnsupportedOperationException()
+    }
+
+    fun unbind() {}
 }
 
-class NotesViewHolder(private val noteView: NoteView) : RecyclerView.ViewHolder(noteView.view) {
-    fun bind(noteItem: NoteItem) {
+class NotesViewHolder(private val noteView: ListItemView) : RecyclerView.ViewHolder(noteView.view) {
+    fun bind(noteItem: ListItem) {
         noteView.bind(noteItem)
+    }
+
+    fun unbind() {
+        noteView.unbind()
     }
 }

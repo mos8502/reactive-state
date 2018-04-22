@@ -20,6 +20,5 @@ abstract class NotesModule {
     companion object {
         @Provides
         @JvmStatic fun provideAppStore(): Store<State, Action> = store
-
     }
 }
