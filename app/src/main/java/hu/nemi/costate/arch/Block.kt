@@ -6,38 +6,31 @@ import android.arch.lifecycle.ViewModel
 import hu.nemi.store.Observable
 import hu.nemi.store.Subscription
 
-interface Block<S> : Observable<S>
-
-interface BlockLifecycleCallback {
+interface Block<S> : Observable<S> {
     fun onActive() {}
     fun onInactive() {}
-    fun onDestroy() {}
+    fun onCleared() {}
 }
 
-abstract class BlockViewModel<S, B>(block: B): ViewModel() where B: Block<S>, B: BlockLifecycleCallback {
-    private val subscription: Subscription
-    private val _state = BlockLiveData<S>(block)
-    val state: LiveData<S> = _state
+abstract class BlockViewModel<S, B : Block<S>>(private val block: B) : ViewModel() {
+    val state: LiveData<S> = BlockLiveData(block)
 
-    init {
-        subscription = block.subscribe { _state. postValue(it) }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        subscription.unsubscribe()
+    final override fun onCleared() {
+        block.onCleared()
     }
 }
 
-private class BlockLiveData<S>(private val target: BlockLifecycleCallback) : MutableLiveData<S>() {
+private class BlockLiveData<S>(private val block: Block<S>) : MutableLiveData<S>() {
+    private lateinit var subscription: Subscription
+
     override fun onActive() {
-        super.onActive()
-        target.onActive()
+        block.onActive()
+        subscription = block.subscribe(::postValue)
     }
 
     override fun onInactive() {
-        super.onInactive()
-        target.onInactive()
+        block.onInactive()
+        subscription.unsubscribe()
     }
 }
 

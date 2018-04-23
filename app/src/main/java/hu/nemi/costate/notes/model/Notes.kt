@@ -1,13 +1,12 @@
 package hu.nemi.costate.notes.model
 
 import hu.nemi.costate.arch.Block
-import hu.nemi.costate.arch.BlockLifecycleCallback
 
-interface NotesApi : Block<ViewState> {
+interface NotesApi {
     fun loadNotes()
 }
 
-interface Notes : NotesApi, BlockLifecycleCallback
+interface Notes : NotesApi, Block<ViewState>
 
 data class ViewState(val notes: List<ListItem>)
 
