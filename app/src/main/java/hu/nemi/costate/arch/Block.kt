@@ -3,6 +3,7 @@ package hu.nemi.costate.arch
 import android.arch.lifecycle.LiveData
 import android.arch.lifecycle.MutableLiveData
 import android.arch.lifecycle.ViewModel
+import android.support.annotation.CallSuper
 import hu.nemi.store.Observable
 import hu.nemi.store.Subscription
 
@@ -12,10 +13,11 @@ interface Block<S> : Observable<S> {
     fun onCleared() {}
 }
 
-abstract class BlockViewModel<S, B : Block<S>>(private val block: B) : ViewModel() {
+open class BlockViewModel<S, B : Block<S>>(private val block: B) : ViewModel() {
     val state: LiveData<S> = BlockLiveData(block)
 
-    final override fun onCleared() {
+    @CallSuper
+    override fun onCleared() {
         block.onCleared()
     }
 }
