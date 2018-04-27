@@ -42,15 +42,6 @@ interface StateStore<S : Any> : Store<S, (S) -> S> {
     }
 }
 
-fun <StateType, ActionType> compose(vararg reducers: (StateType, ActionType) -> StateType): (StateType, ActionType) -> StateType {
-    require(reducers.isNotEmpty()) { "no reducers passed" }
-    return { state, action ->
-        reducers.fold(state) { state, reducer ->
-            reducer.invoke(state, action)
-        }
-    }
-}
-
 private class MiddlewareDispatcher<in S : Any, A>(private val store: Dispatcher<A, Unit>,
                                                   private val middleware: Iterable<Middleware<S, A>>) : Dispatcher<A, A?> {
     private lateinit var state: S
@@ -72,7 +63,7 @@ private class MiddlewareDispatcher<in S : Any, A>(private val store: Dispatcher<
 
 private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock) : StateStore<S> {
     @Volatile private var state = initialState
-    @Volatile var subscribers = emptySet<(S) -> Unit>()
+    @Volatile var subscriptions = emptyMap<(S) -> Unit, Subscription>()
     @Volatile var isDispatching = false
 
     override fun dispatch(action: (S) -> S) = lock {
@@ -94,7 +85,7 @@ private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock
         }
 
         if (changedState != null) {
-            subscribers.forEach { subscriber -> subscriber(changedState) }
+            subscriptions.keys.forEach { subscriber -> subscriber(changedState) }
         }
     }
 
@@ -111,14 +102,14 @@ private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock
     }
 
     override fun subscribe(block: (S) -> Unit): Subscription = lock {
-        if (!subscribers.contains(block)) {
-            subscribers += block
-            block(state)
+        var subscription = subscriptions[block]
+        if(subscription == null) {
+            subscription = Subscription {
+                subscriptions -= block
+            }
+            subscriptions += block to subscription
         }
-
-        Subscription {
-            subscribers -= block
-        }
+        subscription
     }
 
     override fun <R : Any> subStore(lens: Lens<S, R>): StateStore<R> = SubStore(this, lens)
@@ -189,5 +180,4 @@ private class ReducerStore<S : Any, in A : Any>(private val store: Store<S, (S) 
             }
         })
     }
-
 }
