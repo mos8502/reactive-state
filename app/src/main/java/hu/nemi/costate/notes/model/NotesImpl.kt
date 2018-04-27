@@ -10,7 +10,7 @@ import javax.inject.Inject
 
 class NotesViewModel @Inject constructor(private val notes: Notes) : BlockViewModel<ViewState, Notes>(notes), NotesApi by notes
 
-class NotesImpl @Inject constructor(private val store: Store<State, Action>,
+class NotesImpl @Inject constructor(private val store: Store<@JvmSuppressWildcards State, @JvmSuppressWildcards Action>,
                                     private val loadNotes: LoadNotes,
                                     private val saveNote: SaveEdit,
                                     private val createNote: CreateNote,
@@ -50,9 +50,7 @@ class NotesImpl @Inject constructor(private val store: Store<State, Action>,
         }
 
         if (editor == null) items += ListItem.AddItem {
-            store.dispatch { state ->
-                Action.NewNote.takeIf { state.editor == null }
-            }
+            store.dispatch(Action.NewNote)
         }
 
         if (editor != null && editor.noteId == null) items += ListItem.EditorItem(text = editor.text,
@@ -72,9 +70,7 @@ class NotesImpl @Inject constructor(private val store: Store<State, Action>,
         return ViewState(notes = items)
     }
 
-    private fun editNote(it: NoteEntity) = store.dispatch { state ->
-        Action.EditNote(editorId = UUID.randomUUID().toString(), noteId = it.id).takeIf { state.editor == null }
-    }
+    private fun editNote(it: NoteEntity) = store.dispatch(Action.EditNote(editorId = UUID.randomUUID().toString(), noteId = it.id))
 
     private class ItemAction0<E : Any>(private val entity: E, private val block: (E) -> Unit) : () -> Unit {
         override fun invoke() = block(entity)

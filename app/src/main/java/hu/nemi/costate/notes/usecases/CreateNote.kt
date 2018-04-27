@@ -25,14 +25,20 @@ class CreateNote @Inject constructor(private val dao: NotesDao,
     private val updateNote = object : AsyncActionCreator<State, Action> {
         override fun invoke(state: State, dispatch: (ActionCreator<State, Action>) -> Unit) {
             if (state.editor != null) launch(context = storeDispatcher) {
-                dispatch { Action.SaveEdit }
+                dispatch(object : ActionCreator<State, Action> {
+                    override fun invoke(state: State): Action? = Action.SaveEdit
+                })
 
                 try {
                     val entity = NoteEntity(id = UUID.randomUUID().toString(), text = state.editor.text)
                     updateEntity(entity).join()
-                    dispatch { Action.OnNoteAdded(entity = entity) }
+                    dispatch(object : ActionCreator<State, Action> {
+                        override fun invoke(state: State): Action? = Action.OnNoteAdded(entity = entity)
+                    })
                 } catch (error: Throwable) {
-                    dispatch { Action.OnSaveFailed(error = error) }
+                    dispatch(object : ActionCreator<State, Action> {
+                        override fun invoke(state: State): Action? = Action.OnSaveFailed(error = error)
+                    })
                 }
             }
         }

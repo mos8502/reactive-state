@@ -64,9 +64,9 @@ sealed class Action {
     data class OnSaveFailed(val error: Throwable) : Action()
 
     object NewNote : Action()
-    data class OnNoteAdded(val entity: NoteEntity): Action()
+    data class OnNoteAdded(val entity: NoteEntity) : Action()
 
-    data class DeleteNote(val noteId: String): Action()
+    data class DeleteNote(val noteId: String) : Action()
 }
 
 inline fun <reified A : Action> reducer(crossinline block: (State, A) -> State): (State, Action) -> State = { state, action ->
@@ -89,13 +89,17 @@ val failedToLoadNotes = reducer<Action.FailedToLoadNotes> { state, action ->
 }
 
 val editNote = reducer<Action.EditNote> { state, action ->
-    state.copy(editor = Editor(noteId = action.noteId,
-            text = state.entities.first { it.id == action.noteId }.text,
-            error = null,
-            isSaving = false))
+    if (state.editor == null) {
+        state.copy(editor = Editor(noteId = action.noteId,
+                text = state.entities.first { it.id == action.noteId }.text,
+                error = null,
+                isSaving = false))
+    } else {
+        state
+    }
 }
 
-val cancelEdit = reducer<Action.CancelEdit> { state, action ->
+val cancelEdit = reducer<Action.CancelEdit> { state, _ ->
     state.copy(editor = null)
 }
 
@@ -121,8 +125,12 @@ val onSaveFailed = reducer<Action.OnSaveFailed> { state, action ->
     state.copy(editor = state.editor?.copy(isSaving = false, error = action.error))
 }
 
-val newNote = reducer<Action.NewNote> { state, action ->
-    state.copy(editor = Editor(text = "", isSaving = false, error = null, noteId = null))
+val newNote = reducer<Action.NewNote> { state, _ ->
+    if (state.editor == null) {
+        state.copy(editor = Editor(text = "", isSaving = false, error = null, noteId = null))
+    } else {
+        state
+    }
 }
 
 val onNoteAdded = reducer<Action.OnNoteAdded> { state, action ->
@@ -148,5 +156,5 @@ val notesReducer = compose(loadNotes,
 
 val INITIAL_STATE = State(entities = emptyList(), lastFetched = -1, isLoading = false, error = null, editor = null)
 
-val store = Store(initialState = INITIAL_STATE, reducer = notesReducer, middlewares = emptyList())
+val store = Store(initialState = INITIAL_STATE, reducer = notesReducer, middleware = emptyList())
 

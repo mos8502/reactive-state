@@ -1,35 +1,46 @@
 package hu.nemi.store
 
-typealias ActionCreator<StateType, ActionType> = (StateType) -> ActionType?
-
-typealias AsyncActionCreator<StateType, ActionType> = (StateType, (ActionCreator<StateType, ActionType>) -> Unit) -> Unit
-
-interface Dispatcher<in ActionType, out ReturnType> {
-    fun dispatch(action: ActionType): ReturnType
+interface ActionCreator<in S : Any, out A> {
+    operator fun invoke(state: S): A?
 }
 
+interface AsyncActionCreator<in S : Any, out A : Any?> {
+    operator fun invoke(state: S, dispatcher: (ActionCreator<S, A>) -> Unit)
+}
 
-interface Store<StateType, ActionType> : Dispatcher<ActionType, Unit>, Observable<StateType> {
-    fun dispatch(actionCreator: ActionCreator<StateType, ActionType>)
+interface Dispatcher<in S, out R> {
+    fun dispatch(action: S): R
+}
 
-    fun dispatch(asyncActionCreator: AsyncActionCreator<StateType, ActionType>)
+interface Store<S : Any, in A : Any> : Dispatcher<A, Unit>, Observable<S> {
+
+    fun dispatch(actionCreator: ActionCreator<S, A>)
+
+    fun dispatch(asyncActionCreator: AsyncActionCreator<S, A>)
 
     companion object {
-        operator fun <StateType, ActionType> invoke(initialState: StateType,
-                                                    reducer: (StateType, ActionType) -> StateType,
-                                                    middlewares: Iterable<Middleware<StateType, ActionType>> = emptyList()): Store<StateType, ActionType> =
-                StoreImpl(initialState = initialState, reducer = reducer, middlewares = middlewares)
+        operator fun <S : Any, A : Any> invoke(initialState: S,
+                                               reducer: (S, A) -> S,
+                                               middleware: Iterable<Middleware<S, A>> = emptyList()): Store<S, A> =
+                DefaultStateStore(initialState = initialState, lock = Lock()).withReducer(reducer, middleware)
     }
 }
 
-interface Middleware<StateType, ActionType> {
-    fun dispatch(store: Dispatcher<ActionType, Unit>, state: StateType, action: ActionType, next: Dispatcher<ActionType, ActionType?>): ActionType?
+interface Middleware<in S, A> {
+    fun dispatch(store: Dispatcher<A, Unit>, state: S, action: A, next: Dispatcher<A, A?>): A?
 }
 
-fun <StateType, ActionType> Store(initialState: StateType,
-                                  reducer: (StateType, ActionType) -> StateType,
-                                  middlewares: Iterable<Middleware<StateType, ActionType>> = emptyList()): Store<StateType, ActionType> =
-        StoreImpl(initialState, reducer, middlewares)
+interface StateStore<S : Any> : Store<S, (S) -> S> {
+
+    fun <R : Any> subStore(lens: Lens<S, R>): StateStore<R>
+
+    fun <A : Any> withReducer(reducer: (S, A) -> S, middleware: Iterable<Middleware<S, A>> = emptyList()): Store<S, A>
+
+    companion object {
+        operator fun <S : Any> invoke(initialState: S): StateStore<S> =
+                DefaultStateStore(initialState = initialState, lock = Lock())
+    }
+}
 
 fun <StateType, ActionType> compose(vararg reducers: (StateType, ActionType) -> StateType): (StateType, ActionType) -> StateType {
     require(reducers.isNotEmpty()) { "no reducers passed" }
@@ -40,70 +51,143 @@ fun <StateType, ActionType> compose(vararg reducers: (StateType, ActionType) -> 
     }
 }
 
-private class MiddlewareDispatcher<StateType, ActionType>(val state: StateType,
-                                                          val store: Dispatcher<ActionType, Unit>,
-                                                          middlewares: Iterable<Middleware<StateType, ActionType>>) : Dispatcher<ActionType, ActionType?> {
-    private val middlewareIterator = middlewares.iterator()
-    private val next = object : Dispatcher<ActionType, ActionType?> {
-        override fun dispatch(action: ActionType): ActionType? {
+private class MiddlewareDispatcher<in S : Any, A>(private val store: Dispatcher<A, Unit>,
+                                                  private val middleware: Iterable<Middleware<S, A>>) : Dispatcher<A, A?> {
+    private lateinit var state: S
+
+    fun onStateChanged(state: S) {
+        this.state = state
+    }
+
+    override fun dispatch(action: A): A? = ActionDispatcher().dispatch(action)
+
+    private inner class ActionDispatcher : Dispatcher<A, A?> {
+        private val middlewareIterator = middleware.iterator()
+        override fun dispatch(action: A): A? {
             return if (middlewareIterator.hasNext()) middlewareIterator.next().dispatch(store = store, state = state, action = action, next = this)
             else action
         }
-
     }
-
-    override fun dispatch(action: ActionType): ActionType? = next.dispatch(action)
 }
 
-private class StoreImpl<StateType, ActionType>(initialState: StateType,
-                                               private val reducer: (StateType, ActionType) -> StateType,
-                                               private val middlewares: Iterable<Middleware<StateType, ActionType>>) : Store<StateType, ActionType> {
-    @Volatile
-    private var state = initialState
-    @Volatile
-    private var subscribers = emptySet<(StateType) -> Unit>()
-    @Volatile
-    private var isDispatching = false
-    private val lock = Lock()
+private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock) : StateStore<S> {
+    @Volatile private var state = initialState
+    @Volatile var subscribers = emptySet<(S) -> Unit>()
+    @Volatile var isDispatching = false
 
-    override fun dispatch(action: ActionType) = lock {
-        require(!isDispatching) { "dispatch already in progress" }
+    override fun dispatch(action: (S) -> S) = lock {
+        if (isDispatching) throw IllegalStateException("an action is already being dispatched")
 
         isDispatching = true
-        val newState = try {
-            val dispatcher = MiddlewareDispatcher(state = state, store = this, middlewares = middlewares)
-            dispatcher.dispatch(action)?.let { dispatchedAction ->
-                reducer.invoke(state, dispatchedAction)
+
+        val changedState = try {
+            val newState = action(state)
+
+            if (newState != state) {
+                state = newState
+                newState
+            } else {
+                null
             }
         } finally {
             isDispatching = false
         }
 
-        if (newState != null) {
-            state = newState
-            subscribers.forEach { subscriber -> subscriber.invoke(state) }
+        if (changedState != null) {
+            subscribers.forEach { subscriber -> subscriber(changedState) }
         }
     }
 
-    override fun dispatch(actionCreator: ActionCreator<StateType, ActionType>) {
-        actionCreator.invoke(state)?.let(::dispatch)
+    override fun dispatch(actionCreator: ActionCreator<S, (S) -> S>) {
+        lock {
+            actionCreator(state)?.let { dispatch(it) }
+        }
     }
 
-    override fun dispatch(asyncActionCreator: AsyncActionCreator<StateType, ActionType>) = lock {
+    override fun dispatch(asyncActionCreator: AsyncActionCreator<S, (S) -> S>) = lock {
         asyncActionCreator(state) { actionCreator ->
             dispatch(actionCreator)
         }
     }
 
-    override fun subscribe(block: (StateType) -> Unit): Subscription = lock {
-        val subscribers = this.subscribers.toMutableSet()
-        if (subscribers.add(block)) {
-            this.subscribers = subscribers.toSet()
-            block.invoke(state)
+    override fun subscribe(block: (S) -> Unit): Subscription = lock {
+        if (!subscribers.contains(block)) {
+            subscribers += block
+            block(state)
         }
 
         Subscription {
             subscribers -= block
         }
     }
+
+    override fun <R : Any> subStore(lens: Lens<S, R>): StateStore<R> = SubStore(this, lens)
+
+    override fun <A : Any> withReducer(reducer: (S, A) -> S, middleware: Iterable<Middleware<S, A>>): Store<S, A> = ReducerStore(this, reducer, middleware)
+}
+
+private class SubStore<R : Any, S : Any>(private val parent: StateStore<S>,
+                                         private val lens: Lens<S, R>) : StateStore<R> {
+    override fun dispatch(action: (R) -> R) = parent.dispatch { lens.set(it, action(lens.get(it))) }
+
+    override fun dispatch(actionCreator: ActionCreator<R, (R) -> R>) {
+        parent.dispatch {
+            var subState = lens.get(it)
+            subState = actionCreator(subState)?.invoke(subState) ?: subState
+            lens.set(it, subState)
+        }
+    }
+
+    override fun dispatch(asyncActionCreator: AsyncActionCreator<R, (R) -> R>) {
+        parent.dispatch(object : AsyncActionCreator<S, (S) -> S> {
+            override fun invoke(state: S, dispatcher: (ActionCreator<S, (S) -> S>) -> Unit) {
+                asyncActionCreator(lens.get(state)) { actionCreator ->
+                    dispatch(actionCreator)
+                }
+            }
+        })
+    }
+
+    override fun <P : Any> subStore(lens: Lens<R, P>): StateStore<P> = SubStore(this, lens)
+
+    override fun subscribe(block: (R) -> Unit): Subscription = parent.subscribe { block(lens.get(it)) }
+
+    override fun <A : Any> withReducer(reducer: (R, A) -> R, middleware: Iterable<Middleware<R, A>>): Store<R, A> = ReducerStore(this, reducer, middleware)
+}
+
+private class ReducerStore<S : Any, in A : Any>(private val store: Store<S, (S) -> S>,
+                                                private val reducer: (S, A) -> S,
+                                                middleware: Iterable<Middleware<S, A>>) : Store<S, A> {
+    private val middlewareDispatcher = MiddlewareDispatcher(this, middleware).apply {
+        subscribe(::onStateChanged)
+    }
+
+    override fun subscribe(block: (S) -> Unit): Subscription = store.subscribe(block)
+
+    override fun dispatch(action: A) {
+        middlewareDispatcher.dispatch(action)?.let { dispatchedAction ->
+            store.dispatch { reducer(it, dispatchedAction) }
+        }
+    }
+
+    override fun dispatch(actionCreator: ActionCreator<S, A>) {
+        store.dispatch(object : ActionCreator<S, (S) -> S> {
+            override fun invoke(state: S): ((S) -> S)? {
+                return actionCreator(state)?.let { action ->
+                    { reducer(state, action) }
+                }
+            }
+        })
+    }
+
+    override fun dispatch(asyncActionCreator: AsyncActionCreator<S, A>) {
+        store.dispatch(object : AsyncActionCreator<S, (S) -> S> {
+            override fun invoke(state: S, dispatcher: (ActionCreator<S, (S) -> S>) -> Unit) {
+                asyncActionCreator(state) { actionCreator ->
+                    dispatch(actionCreator)
+                }
+            }
+        })
+    }
+
 }

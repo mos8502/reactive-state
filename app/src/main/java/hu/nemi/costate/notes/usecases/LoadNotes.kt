@@ -26,12 +26,18 @@ class LoadNotes @Inject constructor(private val dao: NotesDao,
     private val loadNotes = object : AsyncActionCreator<State, Action> {
         override fun invoke(state: State, dispatch: (ActionCreator<State, Action>) -> Unit) {
             if (!state.isLoading && (state.error != null || System.currentTimeMillis() - state.lastFetched > NOTES_TTL)) launch(context = storeDispatcher) {
-                dispatch { Action.LoadNotes }
+                dispatch(object : ActionCreator<State, Action> {
+                    override fun invoke(state: State): Action? = Action.LoadNotes
+                })
                 try {
                     val notes = notes.await()
-                    dispatch { Action.NotesLoaded(timestamp = System.currentTimeMillis(), notes = notes) }
+                    dispatch(object : ActionCreator<State, Action> {
+                        override fun invoke(state: State): Action? = Action.NotesLoaded(timestamp = System.currentTimeMillis(), notes = notes)
+                    })
                 } catch (error: Throwable) {
-                    dispatch { Action.FailedToLoadNotes(cause = error) }
+                    dispatch(object : ActionCreator<State, Action> {
+                        override fun invoke(state: State): Action? = Action.FailedToLoadNotes(cause = error)
+                    })
                 }
             }
         }
