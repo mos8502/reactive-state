@@ -103,11 +103,12 @@ private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock
 
     override fun subscribe(block: (S) -> Unit): Subscription = lock {
         var subscription = subscriptions[block]
-        if(subscription == null) {
+        if (subscription == null) {
             subscription = Subscription {
                 subscriptions -= block
             }
             subscriptions += block to subscription
+            block(state)
         }
         subscription
     }

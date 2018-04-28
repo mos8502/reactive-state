@@ -8,6 +8,7 @@ object Versions : Configuration("gradle/versions.properties") {
     val mockitoCore by string()
     val mockitoKotlin by string()
     val junit by string()
+    val assertj by string()
 }
 
 object Android : Configuration("gradle/android.properties") {
@@ -61,4 +62,5 @@ object TestDeps {
     val espressoCore = "com.android.support.test.espresso:espresso-core:3.0.1"
     val mockitoCore = "org.mockito:mockito-core:${Versions.mockitoCore}"
     val mockitoKotlin = "com.nhaarman:mockito-kotlin:${Versions.mockitoKotlin}"
+    val assertj = "org.assertj:assertj-core:${Versions.assertj}"
 }

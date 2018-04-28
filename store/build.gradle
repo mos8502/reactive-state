@@ -5,6 +5,7 @@ dependencies {
     compileOnly Deps.kotlinStdLib
 
     testImplementation TestDeps.junit
+    testImplementation TestDeps.assertj
     testImplementation TestDeps.mockitoCore
     testImplementation TestDeps.mockitoKotlin
 }
