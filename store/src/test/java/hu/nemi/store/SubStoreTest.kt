@@ -5,11 +5,10 @@ import com.nhaarman.mockito_kotlin.mock
 import org.junit.Test
 
 class SubStoreTest {
-    private val lens = object : Lens<Int, String> {
-        override fun get(t: Int): String = t.toString()
-
-        override fun set(t: Int, v: String): Int = v.toInt()
-    }
+    private val lens = Lens<Int, String>(
+            get = { it.toString() },
+            set = { string: String -> { string.toInt() } }
+    )
 
     @Test
     fun `sub store emits state when changed`() {
