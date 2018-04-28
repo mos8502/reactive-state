@@ -8,8 +8,6 @@ interface Lens<S, A> {
 
     fun modify(s: S, f: (A) -> A): S
 
-    infix fun S.with(a: A) = invoke(this, a)
-
     companion object {
         operator fun <S, A> invoke(get: (S) -> A, set: (A) -> (S) -> S): Lens<S, A> = DefaultLens(get = get, set = set)
     }
