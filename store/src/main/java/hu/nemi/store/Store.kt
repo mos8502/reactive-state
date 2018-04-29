@@ -64,8 +64,9 @@ private class MiddlewareDispatcher<in S : Any, A>(private val store: Dispatcher<
 }
 
 private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock) : StateStore<S> {
-    private var state by Delegates.observable(initialState) { _, oldState, newState ->
-        if (newState != oldState) subscriptions.keys.forEach { subscriber -> subscriber(newState) }
+    private val node: Node<S> = Node()
+    private var state by Delegates.observable(StateNode(initialState)) { _, oldState, newState ->
+        if (newState != oldState) subscriptions.keys.forEach { subscriber -> subscriber(node.value(newState)) }
     }
     @Volatile private var subscriptions = emptyMap<(S) -> Unit, Subscription>()
     @Volatile private var isDispatching = false
@@ -75,7 +76,7 @@ private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock
 
         isDispatching = true
         state = try {
-            action(state)
+            node.value.modify(state, action)
         } finally {
             isDispatching = false
         }
@@ -83,12 +84,12 @@ private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock
 
     override fun dispatch(actionCreator: ActionCreator<S, (S) -> S>) {
         lock {
-            actionCreator(state)?.let { dispatch(it) }
+            actionCreator(node.value(state))?.let { dispatch(it) }
         }
     }
 
     override fun dispatch(asyncActionCreator: AsyncActionCreator<S, (S) -> S>) = lock {
-        asyncActionCreator(state) { actionCreator ->
+        asyncActionCreator(node.value(state)) { actionCreator ->
             dispatch(actionCreator)
         }
     }
@@ -100,7 +101,7 @@ private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock
                 subscriptions -= block
             }
             subscriptions += block to subscription
-            block(state)
+            block(node.value(state))
         }
         subscription
     }
