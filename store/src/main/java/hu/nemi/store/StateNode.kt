@@ -1,9 +1,9 @@
 package hu.nemi.store
 
 /**
- * Node reference that allows modification an query of the node and it's value
+ * Node reference that allows modification an query of the parentNode and it's value
  */
-interface Node<T : Any> {
+internal interface Node<T : Any> {
     val node: Lens<StateNode<Any>, StateNode<T>>
     val value: Lens<StateNode<Any>, T>
 
@@ -11,7 +11,7 @@ interface Node<T : Any> {
 
     companion object {
         /**
-         * Factory method for constructing root node
+         * Factory method for constructing root parentNode
          */
         operator fun <T : Any> invoke(): Node<T> = object : Node<T> {
             override val node: Lens<StateNode<Any>, StateNode<T>> = Lens(
@@ -25,15 +25,57 @@ interface Node<T : Any> {
 
             override fun <C : Any> withChild(key: Any, init: () -> C): Node<C> = DefaultNode(parent = this, key = key, init = init)
         }
+
+        operator fun <T : Any, V : Any> invoke(outerNode: Node<T>, lens: Lens<T, V>): Node<V> = object : Node<V> {
+            override fun <C : Any> withChild(key: Any, init: () -> C): Node<C> = outerNode.withChild(key, init)
+
+            override val value: Lens<StateNode<Any>, V> = outerNode.value + lens
+
+            override val node: Lens<StateNode<Any>, StateNode<V>> = Lens(
+                    get = {
+                        with(outerNode.node(it)) {
+                            StateNode(value = value, children = children, lens = lens)
+                        }
+                    },
+                    set = { child ->
+                        { parent ->
+                            var p = outerNode.node(parent)
+                            p = p.copy(children = child.children, value = lens(p.value, child.value))
+                            outerNode.node(parent, p)
+                        }
+                    }
+            )
+
+        }
     }
 }
 
-/**
- * Represents the data of a state node
- */
-data class StateNode<V : Any>(val value: V, val children: Map<Any, StateNode<*>>) {
+internal interface StateNode<V : Any> {
+    val value: V
+    val children: Map<Any, StateNode<*>>
+
+    fun copy(value: V = this.value, children: Map<Any, StateNode<*>> = this.children): StateNode<V>
+
     companion object {
+        operator fun <V : Any> invoke(value: V, children: Map<Any, StateNode<*>>): StateNode<V> =
+                DefaultStateNode(value = value, children = children)
+
+        operator fun <V : Any, P : Any> invoke(value: P, children: Map<Any, StateNode<*>>, lens: Lens<P, V>): StateNode<V> =
+                LensStateNode(parentValue = value, children = children, lens = lens)
+
         operator fun invoke(value: Any): StateNode<Any> = StateNode(value = value, children = emptyMap())
+    }
+}
+
+private data class DefaultStateNode<V : Any>(override val value: V, override val children: Map<Any, StateNode<*>>) : StateNode<V>
+
+private data class LensStateNode<V : Any, P : Any>(val parentValue: P,
+                                                   override val children: Map<Any, StateNode<*>>,
+                                                   val lens: Lens<P, V>) : StateNode<V> {
+    override val value: V = lens(parentValue)
+
+    override fun copy(value: V, children: Map<Any, StateNode<*>>): StateNode<V> {
+        return copy(parentValue = lens(parentValue, value), children = children)
     }
 }
 

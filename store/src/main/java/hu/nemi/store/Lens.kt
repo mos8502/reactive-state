@@ -10,6 +10,11 @@ interface Lens<S, A> {
 
     companion object {
         operator fun <S, A> invoke(get: (S) -> A, set: (A) -> (S) -> S): Lens<S, A> = DefaultLens(get = get, set = set)
+
+        operator fun <S> invoke(): Lens<S, S> = DefaultLens(
+                get = { it },
+                set = { it -> { _ -> it } }
+        )
     }
 }
 

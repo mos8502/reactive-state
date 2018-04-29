@@ -78,7 +78,7 @@ class StateStoreTest {
         val store = StateStore(23)
 
         store.subscribe(subscriber)
-        store.dispatch(object: ActionCreator<Int, (Int) -> Int> {
+        store.dispatch(object : ActionCreator<Int, (Int) -> Int> {
             override fun invoke(state: Int): ((Int) -> Int)? = { it * 2 }
         })
 
@@ -95,7 +95,7 @@ class StateStoreTest {
         val store = StateStore(23)
 
         store.subscribe(subscriber)
-        store.dispatch(object: ActionCreator<Int, (Int) -> Int> {
+        store.dispatch(object : ActionCreator<Int, (Int) -> Int> {
             override fun invoke(state: Int): ((Int) -> Int)? = null
         })
 
@@ -111,13 +111,13 @@ class StateStoreTest {
         val store = StateStore(23)
 
         store.subscribe(subscriber)
-        store.dispatch(object: AsyncActionCreator<Int, (Int) -> Int> {
+        store.dispatch(object : AsyncActionCreator<Int, (Int) -> Int> {
             override fun invoke(state: Int, dispatcher: (ActionCreator<Int, (Int) -> Int>) -> Unit) {
-                dispatcher(object: ActionCreator<Int, (Int) -> Int> {
+                dispatcher(object : ActionCreator<Int, (Int) -> Int> {
                     override fun invoke(state: Int): ((Int) -> Int)? = { it * 2 }
                 })
 
-                dispatcher(object: ActionCreator<Int, (Int) -> Int> {
+                dispatcher(object : ActionCreator<Int, (Int) -> Int> {
                     override fun invoke(state: Int): ((Int) -> Int)? = { it - 13 }
                 })
             }
@@ -128,6 +128,33 @@ class StateStoreTest {
             verify(subscriber).invoke(46)
             verify(subscriber).invoke(33)
             verifyNoMoreInteractions()
+        }
+    }
+
+    @Test
+    fun `can have child state`() {
+        val subscriber: (Int) -> Unit = mock()
+        val store = StateStore(23)
+        val childSubscriber: (String) -> Unit = mock()
+        val childStore = store.subStore("string") { "Hello, World!" }
+        val grandchildSubscriber: (Long) -> Unit = mock()
+        val grandChildStore = childStore.subStore("long") { -1L }
+
+        store.subscribe(subscriber)
+        childStore.subscribe(childSubscriber)
+        grandChildStore.subscribe(grandchildSubscriber)
+
+        store.dispatch { it * 2 }
+        childStore.dispatch { "Goodbye, World!" }
+        grandChildStore.dispatch { it + 23L }
+
+        inOrder(subscriber, childSubscriber, grandchildSubscriber) {
+            verify(subscriber).invoke(23)
+            verify(childSubscriber).invoke("Hello, World!")
+            verify(grandchildSubscriber).invoke(-1L)
+            verify(subscriber).invoke(46)
+            verify(childSubscriber).invoke("Goodbye, World!")
+            verify(grandchildSubscriber).invoke(22L)
         }
     }
 }
