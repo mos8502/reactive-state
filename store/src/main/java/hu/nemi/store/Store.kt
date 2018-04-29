@@ -1,5 +1,7 @@
 package hu.nemi.store
 
+import kotlin.properties.Delegates
+
 interface ActionCreator<in S : Any, out A> {
     operator fun invoke(state: S): A?
 }
@@ -62,30 +64,20 @@ private class MiddlewareDispatcher<in S : Any, A>(private val store: Dispatcher<
 }
 
 private class DefaultStateStore<S : Any>(initialState: S, private val lock: Lock) : StateStore<S> {
-    @Volatile private var state = initialState
-    @Volatile var subscriptions = emptyMap<(S) -> Unit, Subscription>()
-    @Volatile var isDispatching = false
+    private var state by Delegates.observable(initialState) { _, oldState, newState ->
+        if (newState != oldState) subscriptions.keys.forEach { subscriber -> subscriber(newState) }
+    }
+    @Volatile private var subscriptions = emptyMap<(S) -> Unit, Subscription>()
+    @Volatile private var isDispatching = false
 
     override fun dispatch(action: (S) -> S) = lock {
         if (isDispatching) throw IllegalStateException("an action is already being dispatched")
 
         isDispatching = true
-
-        val changedState = try {
-            val newState = action(state)
-
-            if (newState != state) {
-                state = newState
-                newState
-            } else {
-                null
-            }
+        state = try {
+            action(state)
         } finally {
             isDispatching = false
-        }
-
-        if (changedState != null) {
-            subscriptions.keys.forEach { subscriber -> subscriber(changedState) }
         }
     }
 
