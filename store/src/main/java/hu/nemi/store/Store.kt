@@ -19,7 +19,6 @@ interface Store<out S : Any, in A : Any> : Dispatcher<A, Unit>, Observable<S> {
     fun dispatch(actionCreator: ActionCreator<S, A>)
 
     fun dispatch(asyncActionCreator: AsyncActionCreator<S, A>)
-
 }
 
 interface Middleware<in S, A> {
@@ -66,7 +65,7 @@ private class MiddlewareDispatcher<in S : Any, A>(private val store: Dispatcher<
     }
 }
 
-private class RootStateStore<R : Any>(initialState: R, val lock: Lock) {
+private class RootStateStore<R : Any>(initialState: R, private val lock: Lock) {
     private var state by Delegates.observable(StateNode(initialState)) { _, oldState, newState ->
         if (newState != oldState) subscriptions.keys.forEach { subscriber -> subscriber(newState) }
     }
@@ -141,13 +140,12 @@ private class DefaultStateStore<R : Any, S : Any, P : Any, M : Any>(private val 
         })
     }
 
-    override fun <C : Any> subState(key: Any, init: () -> C): StateStore<State<M, C>> {
-        return DefaultStateStore(
-                rootStateStore = rootStateStore,
-                node = node.addChild(key, init),
-                parentState = state,
-                lens = Lens())
-    }
+    override fun <C : Any> subState(key: Any, init: () -> C): StateStore<State<M, C>> =
+            DefaultStateStore(
+                    rootStateStore = rootStateStore,
+                    node = node.addChild(key, init),
+                    parentState = state,
+                    lens = Lens())
 
     override fun <T : Any> map(lens: Lens<M, T>): StateStore<T> =
             DefaultStateStore(rootStateStore = rootStateStore,
@@ -183,10 +181,8 @@ private class ReducerStore<S : Any, in A : Any>(private val store: Store<S, (S) 
 
     override fun dispatch(actionCreator: ActionCreator<S, A>) {
         store.dispatch(object : ActionCreator<S, (S) -> S> {
-            override fun invoke(state: S): ((S) -> S)? {
-                return actionCreator(state)?.let { action ->
-                    { reducer(state, action) }
-                }
+            override fun invoke(state: S): ((S) -> S)? = actionCreator(state)?.let { action ->
+                { reducer(state, action) }
             }
         })
     }
