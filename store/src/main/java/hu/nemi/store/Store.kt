@@ -14,7 +14,7 @@ interface Dispatcher<in S, out R> {
     fun dispatch(action: S): R
 }
 
-interface Store<S : Any, in A : Any> : Dispatcher<A, Unit>, Observable<S> {
+interface Store<out S : Any, in A : Any> : Dispatcher<A, Unit>, Observable<S> {
 
     fun dispatch(actionCreator: ActionCreator<S, A>)
 

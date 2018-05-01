@@ -1,8 +1,8 @@
 package hu.nemi.costate.notes.model
 
 import hu.nemi.costate.notes.db.NoteEntity
-import hu.nemi.store.Store
-import hu.nemi.store.compose
+import hu.nemi.store.StateStore
+import hu.nemi.store.fold
 
 data class State(
         /**
@@ -141,7 +141,7 @@ val deleteNote = reducer<Action.DeleteNote> { state, action ->
     state.copy(entities = state.entities.filter { it.id != action.noteId })
 }
 
-val notesReducer = compose(loadNotes,
+val notesReducer = fold(loadNotes,
         notesLoaded,
         failedToLoadNotes,
         editNote,
@@ -156,5 +156,5 @@ val notesReducer = compose(loadNotes,
 
 val INITIAL_STATE = State(entities = emptyList(), lastFetched = -1, isLoading = false, error = null, editor = null)
 
-val store = Store(initialState = INITIAL_STATE, reducer = notesReducer, middleware = emptyList())
+val store = StateStore(INITIAL_STATE).withReducer(reducer = notesReducer, middleware = emptyList())
 
