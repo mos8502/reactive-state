@@ -15,7 +15,7 @@ class SubStoreTest {
         val storeSubscriber: (Int) -> Unit = mock()
         val store = StateStore(23)
         val subStoreSubscriber: (String) -> Unit = mock()
-        val subStore = store.subStore(lens)
+        val subStore = store.map(lens)
 
         store.subscribe(storeSubscriber)
         subStore.subscribe(subStoreSubscriber)
@@ -37,7 +37,7 @@ class SubStoreTest {
         val storeSubscriber: (Int) -> Unit = mock()
         val store = StateStore(23)
         val subStoreSubscriber: (String) -> Unit = mock()
-        val subStore = store.subStore(lens)
+        val subStore = store.map(lens)
 
         store.subscribe(storeSubscriber)
         val subStoreSubscription = subStore.subscribe(subStoreSubscriber)
@@ -57,7 +57,7 @@ class SubStoreTest {
         val storeSubscriber: (Int) -> Unit = mock()
         val store = StateStore(23)
         val subStoreSubscriber: (String) -> Unit = mock()
-        val subStore = store.subStore(lens)
+        val subStore = store.map(lens)
 
         store.subscribe(storeSubscriber)
         subStore.subscribe(subStoreSubscriber)
@@ -79,7 +79,7 @@ class SubStoreTest {
         val storeSubscriber: (Int) -> Unit = mock()
         val store = StateStore(23)
         val subStoreSubscriber: (String) -> Unit = mock()
-        val subStore = store.subStore(lens)
+        val subStore = store.map(lens)
 
         store.subscribe(storeSubscriber)
         subStore.subscribe(subStoreSubscriber)
@@ -101,7 +101,7 @@ class SubStoreTest {
         val storeSubscriber: (Int) -> Unit = mock()
         val store = StateStore(23)
         val subStoreSubscriber: (String) -> Unit = mock()
-        val subStore = store.subStore(lens)
+        val subStore = store.map(lens)
 
         store.subscribe(storeSubscriber)
         subStore.subscribe(subStoreSubscriber)
@@ -133,7 +133,7 @@ class SubStoreTest {
         val storeSubscriber: (Int) -> Unit = mock()
         val store = StateStore(23)
         val subStoreSubscriber: (String) -> Unit = mock()
-        val subStore = store.subStore(lens)
+        val subStore = store.map(lens)
 
         store.subscribe(storeSubscriber)
         subStore.subscribe(subStoreSubscriber)

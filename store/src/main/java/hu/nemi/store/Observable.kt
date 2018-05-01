@@ -9,11 +9,12 @@ interface Subscription {
     }
 }
 
-interface Observable<T> {
+interface Observable<out T> {
     fun subscribe(block: (T) -> Unit): Subscription
 }
 
-private class DefaultSubscription(private val lock: Lock, private val onUnsubscribe: () -> Unit) : Subscription {
+private class DefaultSubscription(private val lock: Lock,
+                                  private val onUnsubscribe: () -> Unit) : Subscription {
     @Volatile private var isUnsubscribed = false
 
     override fun unsubscribe() = lock {

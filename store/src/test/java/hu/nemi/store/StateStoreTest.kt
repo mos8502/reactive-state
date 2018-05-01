@@ -136,9 +136,17 @@ class StateStoreTest {
         val subscriber: (Int) -> Unit = mock()
         val store = StateStore(23)
         val childSubscriber: (String) -> Unit = mock()
-        val childStore = store.subStore("string") { "Hello, World!" }
+        val childStore = store.subState("string") { "Hello, World!" }
+                .map(Lens(
+                        get = { it.state },
+                        set = { value: String -> { state: State<Int, String> -> state.copy(state = value) } }
+                ))
         val grandchildSubscriber: (Long) -> Unit = mock()
-        val grandChildStore = childStore.subStore("long") { -1L }
+        val grandChildStore = childStore.subState("long") { -1L }
+                .map(Lens(
+                        get = { it.state },
+                        set = { value: Long -> { state: State<String, Long> -> state.copy(state = value) } }
+                ))
 
         store.subscribe(subscriber)
         childStore.subscribe(childSubscriber)
@@ -156,5 +164,21 @@ class StateStoreTest {
             verify(childSubscriber).invoke("Goodbye, World!")
             verify(grandchildSubscriber).invoke(22L)
         }
+    }
+
+    @Test
+    fun `deep states`() {
+        val store = StateStore(23)
+                .subState("first") { "1" }
+                .subState("second") { 2 }
+                .subState("third") { 3L }
+                .subState(4) { Unit }
+                .subState(5L) { Pair(1, 2) }
+        val subscriber: (State<State<State<State<State<Int, String>, Int>, Long>, Unit>, Pair<Int, Int>>) -> Unit = mock()
+        val expected = State(State(State(State(State(23, "1"), 2), 3L), Unit), 1 to 2)
+
+        store.subscribe(subscriber)
+        verify(subscriber)(expected)
+
     }
 }

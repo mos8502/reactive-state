@@ -13,7 +13,7 @@ class LensTest {
         val employee = Employee("John Doe", Company("Arrow", Address("Functional city", Street(23, "lambda street"))))
         val expectedEmployee = Employee("John Doe", Company("Arrow", Address("Functional city", Street(23, "Lambda street"))))
 
-        assertThat(employeeStreetName.modify(employee, String::capitalize))
+        assertThat(employeeStreetName(employee, String::capitalize))
                 .isEqualTo(expectedEmployee)
     }
 }
